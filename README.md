@@ -1,6 +1,6 @@
 # MCHelden
 
-Server-Mod für das **Helden Projekt Morten**.
+Server-Mod für **Minecraft Heroes 1**.
 
 Minecraft 1.21.1 · NeoForge 21.1.248 · Java 21
 
