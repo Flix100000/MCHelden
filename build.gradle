@@ -29,6 +29,7 @@ sourceSets.main.resources {
 
 repositories {
     // Add here additional repositories if required by some of the dependencies below.
+    mavenCentral()
 }
 
 base {
@@ -137,6 +138,28 @@ dependencies {
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
+
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+// Gibt dem Test-SourceSet Zugriff auf Minecraft- und NeoForge-Klassen.
+neoForge.addModdingDependenciesTo(sourceSets.test)
+
+// Ohne das erreicht kein Tastendruck die Serverkonsole — man kann im Dev-Server
+// also keine Befehle eingeben und ihn nicht sauber mit "stop" herunterfahren.
+tasks.withType(JavaExec).configureEach {
+    if (name.startsWith('run')) {
+        standardInput = System.in
+    }
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "failed", "skipped"
+    }
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
