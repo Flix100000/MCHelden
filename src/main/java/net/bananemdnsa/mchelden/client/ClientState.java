@@ -22,10 +22,13 @@ public final class ClientState {
     private ClientState() {
     }
 
-    /** Dauer der Herzverlust-Animation in Ticks. */
+    /** Dauer der Herzverlust-Animation im HUD, in Ticks. */
     public static final int LOSS_ANIMATION_TICKS = 20;
+    /** Dauer des bildschirmfüllenden Effekts. Laueft laenger, damit der Moment Gewicht bekommt. */
+    public static final int LOSS_OVERLAY_TICKS = 34;
 
     private static int lossAnimationTicks;
+    private static int lossOverlayTicks;
 
     /**
      * Startet die Verlust-Animation. Solange sie läuft, zeigt das HUD das verlorene Herz
@@ -34,10 +37,12 @@ public final class ClientState {
     public static void onHeartLost(int remaining) {
         hearts = remaining;
         lossAnimationTicks = LOSS_ANIMATION_TICKS;
+        lossOverlayTicks = LOSS_OVERLAY_TICKS;
 
         LocalPlayer player = Minecraft.getInstance().player;
         if (player != null) {
             player.playSound(SoundEvents.GLASS_BREAK, 0.7f, 0.5f);
+            player.playSound(SoundEvents.ALLAY_DEATH, 0.8f, 0.6f);
         }
     }
 
@@ -45,6 +50,18 @@ public final class ClientState {
         if (lossAnimationTicks > 0) {
             lossAnimationTicks--;
         }
+        if (lossOverlayTicks > 0) {
+            lossOverlayTicks--;
+        }
+    }
+
+    public static boolean isLossOverlayRunning() {
+        return lossOverlayTicks > 0;
+    }
+
+    /** 1.0 am Anfang des Overlays, 0.0 am Ende. */
+    public static float lossOverlayProgress(float partialTick) {
+        return Math.max(0f, lossOverlayTicks - partialTick) / LOSS_OVERLAY_TICKS;
     }
 
     public static boolean isLossAnimationRunning() {
@@ -77,6 +94,7 @@ public final class ClientState {
         playtimeRemainingSeconds = PlayerState.DAILY_PLAYTIME_SECONDS;
         phase = Phase.AUFBAU;
         lossAnimationTicks = 0;
+        lossOverlayTicks = 0;
     }
 
     public static int getHearts() {
