@@ -3,7 +3,6 @@ package net.bananemdnsa.mchelden.hearts;
 import javax.annotation.Nullable;
 
 import net.bananemdnsa.mchelden.network.NetworkHandler;
-import net.bananemdnsa.mchelden.text.HeldenText;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -51,12 +50,7 @@ public final class HeartEvents {
         }
 
         NetworkHandler.syncTo(player);
-
-        if (HeartManager.consumePendingLossAnimation(player.getUUID())) {
-            int remaining = HeartManager.get(player.getServer(), player.getUUID());
-            NetworkHandler.sendHeartLost(player, remaining);
-            player.sendSystemMessage(HeldenText.heartLost(remaining));
-        }
+        HeartManager.deliverPendingLoss(player);
     }
 
     /** Liefert den verursachenden Spieler, oder {@code null} wenn keiner beteiligt war. */
