@@ -1,8 +1,9 @@
 {
   "required": true,
-  "package": "net.bananemdnsa.examplemod.mixin",
+  "package": "net.bananemdnsa.mchelden.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
+  "client": [],
   "injectors": {
     "defaultRequire": 1
   },
