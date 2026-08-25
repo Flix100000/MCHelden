@@ -21,7 +21,16 @@ public final class NetworkHandler {
         registrar.playToClient(
                 StateSyncPayload.TYPE,
                 StateSyncPayload.STREAM_CODEC,
-                NetworkHandler::handleOnClient);
+                NetworkHandler::handleStateOnClient);
+        registrar.playToClient(
+                HeartLostPayload.TYPE,
+                HeartLostPayload.STREAM_CODEC,
+                NetworkHandler::handleHeartLostOnClient);
+    }
+
+    /** Startet beim Empfänger die Verlust-Animation. Beim Respawn schicken, nicht beim Tod. */
+    public static void sendHeartLost(ServerPlayer player, int remaining) {
+        PacketDistributor.sendToPlayer(player, new HeartLostPayload(remaining));
     }
 
     /** Schickt einem Spieler seinen eigenen Zustand. Nach jeder Aenderung aufrufen. */
@@ -61,8 +70,12 @@ public final class NetworkHandler {
      * Laeuft ausschliesslich auf dem Client. Die Client-Klasse wird erst beim ersten
      * Aufruf geladen, nicht bei der Registrierung — auf dedizierten Servern also nie.
      */
-    private static void handleOnClient(StateSyncPayload payload, IPayloadContext context) {
+    private static void handleStateOnClient(StateSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.accept(payload));
+    }
+
+    private static void handleHeartLostOnClient(HeartLostPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onHeartLost(payload.remaining()));
     }
 
     public static String version() {

@@ -1,6 +1,8 @@
 package net.bananemdnsa.mchelden.hearts;
 
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.Nullable;
 
@@ -17,6 +19,9 @@ import net.minecraft.server.level.ServerPlayer;
  * und die Elimination bei null nirgends umgangen werden können.
  */
 public final class HeartManager {
+    /** Rein transient: geht ein Spieler beim Tod raus, braucht er beim Wiederkommen keine Animation. */
+    private static final Set<UUID> PENDING_LOSS_ANIMATION = ConcurrentHashMap.newKeySet();
+
     private HeartManager() {
     }
 
@@ -49,14 +54,23 @@ public final class HeartManager {
         return set(server, uuid, get(server, uuid) + delta, killerName);
     }
 
-    /** Herzverlust nach einem Tod durch einen Spieler. */
+    /**
+     * Herzverlust nach einem Tod durch einen Spieler.
+     *
+     * <p>Die Animation wird hier nur vorgemerkt und erst beim Respawn ausgelöst — im Moment
+     * des Todes liegt der Todesbildschirm davor und niemand würde sie sehen.
+     */
     public static void loseHeart(MinecraftServer server, UUID uuid, String killerName) {
         int remaining = add(server, uuid, -1, killerName);
 
-        ServerPlayer player = online(server, uuid);
-        if (player != null && remaining > 0) {
-            player.sendSystemMessage(HeldenText.heartLost(remaining));
+        if (remaining > 0) {
+            PENDING_LOSS_ANIMATION.add(uuid);
         }
+    }
+
+    /** Liefert true, wenn für diesen Spieler noch eine Verlust-Animation aussteht, und verbraucht sie. */
+    public static boolean consumePendingLossAnimation(UUID uuid) {
+        return PENDING_LOSS_ANIMATION.remove(uuid);
     }
 
     /** Herzgewinn durch den Bounty-Kill. Der Deckel bei vier greift im Setter. */

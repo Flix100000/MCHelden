@@ -4,6 +4,10 @@ import net.bananemdnsa.mchelden.network.StateSyncPayload;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.PlayerState;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.sounds.SoundEvents;
+
 /**
  * Letzter vom Server empfangener Zustand des eigenen Spielers. Quelle fuer alle HUDs.
  * Wird nur auf dem Client geladen.
@@ -16,6 +20,40 @@ public final class ClientState {
     private static Phase phase = Phase.AUFBAU;
 
     private ClientState() {
+    }
+
+    /** Dauer der Herzverlust-Animation in Ticks. */
+    public static final int LOSS_ANIMATION_TICKS = 16;
+
+    private static int lossAnimationTicks;
+
+    /**
+     * Startet die Verlust-Animation. Solange sie läuft, zeigt das HUD das verlorene Herz
+     * noch — es zerspringt vor deinen Augen, statt einfach schon weg zu sein.
+     */
+    public static void onHeartLost(int remaining) {
+        hearts = remaining;
+        lossAnimationTicks = LOSS_ANIMATION_TICKS;
+
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.playSound(SoundEvents.GLASS_BREAK, 0.7f, 0.5f);
+        }
+    }
+
+    public static void tick() {
+        if (lossAnimationTicks > 0) {
+            lossAnimationTicks--;
+        }
+    }
+
+    public static boolean isLossAnimationRunning() {
+        return lossAnimationTicks > 0;
+    }
+
+    /** 1.0 am Anfang der Animation, 0.0 am Ende. */
+    public static float lossAnimationProgress() {
+        return lossAnimationTicks / (float) LOSS_ANIMATION_TICKS;
     }
 
     public static void accept(StateSyncPayload payload) {
@@ -33,6 +71,7 @@ public final class ClientState {
         bountyResolved = false;
         playtimeRemainingSeconds = PlayerState.DAILY_PLAYTIME_SECONDS;
         phase = Phase.AUFBAU;
+        lossAnimationTicks = 0;
     }
 
     public static int getHearts() {

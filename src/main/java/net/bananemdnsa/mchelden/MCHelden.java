@@ -32,6 +32,7 @@ public class MCHelden {
         NeoForge.EVENT_BUS.addListener(this::registerCommands);
         NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
         NeoForge.EVENT_BUS.addListener(HeartEvents::onLivingDeath);
+        NeoForge.EVENT_BUS.addListener(HeartEvents::onRespawn);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
@@ -54,7 +55,7 @@ public class MCHelden {
         store.setDirty();
 
         if (state.isEliminated()) {
-            player.connection.disconnect(HeldenText.eliminationKickScreen());
+            player.connection.disconnect(HeldenText.eliminationKick());
             return;
         }
 

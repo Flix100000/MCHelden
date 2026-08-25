@@ -16,6 +16,7 @@ import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
+import net.bananemdnsa.mchelden.text.HeldenText;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -72,6 +73,53 @@ public final class HeldenCommand {
                                                 StringArgumentType.getString(context, "phase")))))));
     }
 
+    private static int info(CommandSourceStack source, Collection<GameProfile> profiles) {
+        PlayerStateStore store = PlayerStateStore.get(source.getServer());
+        for (GameProfile profile : profiles) {
+            printPlayer(source, store, profile);
+        }
+        return profiles.size();
+    }
+
+    private static void printPlayer(CommandSourceStack source, PlayerStateStore store, GameProfile profile) {
+        PlayerState state = store.find(profile.getId());
+
+        source.sendSuccess(() -> Component.literal(nameOf(profile)).withStyle(ChatFormatting.GOLD), false);
+
+        if (state == null) {
+            source.sendSuccess(HeldenText::infoUnknown, false);
+            return;
+        }
+
+        source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.hearts",
+                heartsValue(state.getHearts())), false);
+        source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.bounty",
+                bountyValue(store, state)), false);
+        source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.playtime",
+                HeldenText.playtimeLeft(formatDuration(
+                        Math.max(0, PlayerState.DAILY_PLAYTIME_SECONDS - state.getPlaytimeUsedSeconds())))), false);
+        source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.status",
+                state.isEliminated() ? HeldenText.statusEliminated() : HeldenText.statusActive()), false);
+    }
+
+    private static Component heartsValue(int hearts) {
+        return Component.literal(hearts + " / " + PlayerState.MAX_HEARTS)
+                .withStyle(hearts == 0 ? ChatFormatting.RED : ChatFormatting.WHITE);
+    }
+
+    private static Component bountyValue(PlayerStateStore store, PlayerState state) {
+        UUID target = state.getBountyTarget();
+        if (target == null) {
+            return state.isBountyResolved() ? HeldenText.bountyResolved() : HeldenText.bountyNone();
+        }
+
+        PlayerState targetState = store.find(target);
+        String name = targetState != null && !targetState.getName().isEmpty()
+                ? targetState.getName()
+                : target.toString();
+        return Component.literal(name).withStyle(ChatFormatting.WHITE);
+    }
+
     /** Baut den give- bzw. remove-Zweig. Beide unterscheiden sich nur im Vorzeichen. */
     private static LiteralArgumentBuilder<CommandSourceStack> heartDeltaBranch(String name, int sign) {
         return Commands.literal(name)
@@ -91,8 +139,7 @@ public final class HeldenCommand {
     private static int heartDelta(CommandSourceStack source, Collection<GameProfile> profiles, int delta) {
         MinecraftServer server = source.getServer();
         for (GameProfile profile : profiles) {
-            int now = HeartManager.add(server, profile.getId(), delta, "");
-            report(source, profile, now);
+            report(source, profile, HeartManager.add(server, profile.getId(), delta, ""));
         }
         return profiles.size();
     }
@@ -100,8 +147,7 @@ public final class HeldenCommand {
     private static int heartSet(CommandSourceStack source, Collection<GameProfile> profiles, int hearts) {
         MinecraftServer server = source.getServer();
         for (GameProfile profile : profiles) {
-            int now = HeartManager.set(server, profile.getId(), hearts, "");
-            report(source, profile, now);
+            report(source, profile, HeartManager.set(server, profile.getId(), hearts, ""));
         }
         return profiles.size();
     }
@@ -110,8 +156,7 @@ public final class HeldenCommand {
         MinecraftServer server = source.getServer();
         for (GameProfile profile : profiles) {
             Elimination.revive(server, profile.getId(), hearts);
-            source.sendSuccess(() -> Component.literal(nameOf(profile) + " ist zurück im Spiel mit "
-                    + hearts + " Herzen").withStyle(ChatFormatting.GREEN), true);
+            source.sendSuccess(() -> HeldenText.revived(nameOf(profile), hearts), true);
         }
         return profiles.size();
     }
@@ -119,80 +164,24 @@ public final class HeldenCommand {
     private static void report(CommandSourceStack source, GameProfile profile, int hearts) {
         source.sendSuccess(() -> Component.literal(nameOf(profile) + ": ")
                 .withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(hearts + " / " + PlayerState.MAX_HEARTS)
-                        .withStyle(hearts == 0 ? ChatFormatting.RED : ChatFormatting.WHITE)), true);
-    }
-
-    private static String nameOf(GameProfile profile) {
-        return profile.getName() != null ? profile.getName() : profile.getId().toString();
+                .append(heartsValue(hearts)), true);
     }
 
     private static int phaseSet(CommandSourceStack source, String phaseId) {
         Phase phase = Phase.byId(phaseId);
-        GameState gameState = GameState.get(source.getServer());
-        gameState.setPhase(phase);
-
-        source.sendSuccess(() -> Component.literal("Phase gesetzt auf ")
-                .withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(phase.getDisplayName()).withStyle(ChatFormatting.GOLD)), true);
+        GameState.get(source.getServer()).setPhase(phase);
+        source.sendSuccess(() -> HeldenText.phaseSet(phase.getDisplayName()), true);
         return 1;
-    }
-
-    private static int info(CommandSourceStack source, Collection<GameProfile> profiles) {
-        MinecraftServer server = source.getServer();
-        PlayerStateStore store = PlayerStateStore.get(server);
-
-        for (GameProfile profile : profiles) {
-            printPlayer(source, store, profile);
-        }
-        return profiles.size();
-    }
-
-    private static void printPlayer(CommandSourceStack source, PlayerStateStore store, GameProfile profile) {
-        UUID uuid = profile.getId();
-        PlayerState state = store.find(uuid);
-
-        String name = profile.getName() != null ? profile.getName() : uuid.toString();
-        source.sendSuccess(() -> Component.literal(name).withStyle(ChatFormatting.GOLD), false);
-
-        if (state == null) {
-            source.sendSuccess(() -> Component.literal("  kein Zustand gespeichert — war noch nie auf dem Server")
-                    .withStyle(ChatFormatting.GRAY), false);
-            return;
-        }
-
-        line(source, "Herzen", state.getHearts() + " / " + PlayerState.MAX_HEARTS);
-        line(source, "Bounty", describeBounty(store, state));
-        line(source, "Spielzeit", formatDuration(
-                Math.max(0, PlayerState.DAILY_PLAYTIME_SECONDS - state.getPlaytimeUsedSeconds())) + " übrig");
-        line(source, "Status", state.isEliminated() ? "ausgeschieden" : "aktiv");
-    }
-
-    private static String describeBounty(PlayerStateStore store, PlayerState state) {
-        UUID target = state.getBountyTarget();
-        if (target == null) {
-            return state.isBountyResolved() ? "aufgelöst" : "kein Ziel";
-        }
-        PlayerState targetState = store.find(target);
-        String targetName = targetState != null && !targetState.getName().isEmpty()
-                ? targetState.getName()
-                : target.toString();
-        return targetName;
     }
 
     private static int phaseInfo(CommandSourceStack source) {
-        GameState gameState = GameState.get(source.getServer());
-        source.sendSuccess(() -> Component.literal("Phase: ")
-                .withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(gameState.getPhase().getDisplayName())
-                        .withStyle(ChatFormatting.GOLD)), false);
+        Phase phase = GameState.get(source.getServer()).getPhase();
+        source.sendSuccess(() -> HeldenText.phaseCurrent(phase.getDisplayName()), false);
         return 1;
     }
 
-    private static void line(CommandSourceStack source, String label, String value) {
-        source.sendSuccess(() -> Component.literal("  " + label + ": ")
-                .withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(value).withStyle(ChatFormatting.WHITE)), false);
+    private static String nameOf(GameProfile profile) {
+        return profile.getName() != null ? profile.getName() : profile.getId().toString();
     }
 
     private static String formatDuration(int seconds) {

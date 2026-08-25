@@ -42,7 +42,7 @@ public final class Elimination {
 
         ServerPlayer player = HeartManager.online(server, uuid);
         if (player != null) {
-            player.connection.disconnect(HeldenText.eliminationKickScreen());
+            player.connection.disconnect(HeldenText.eliminationKick());
         }
     }
 

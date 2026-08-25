@@ -1,0 +1,28 @@
+{
+  "mchelden.phase.aufbau": "Aufbau",
+  "mchelden.phase.krieg": "Krieg",
+  "mchelden.phase.finalwar": "Final War",
+
+  "mchelden.elimination.kick.title": "Du bist ausgeschieden.",
+  "mchelden.elimination.kick.body": "Deine Herzen sind aufgebraucht.\nDas Projekt ist für dich vorbei.",
+  "mchelden.elimination.title": "%s ist ausgeschieden",
+  "mchelden.elimination.subtitle": "getötet von %s",
+  "mchelden.survivors": "noch %s Spieler übrig",
+
+  "mchelden.heart.lost": "Ein Herz verloren — noch %s",
+  "mchelden.heart.gained": "Ein Herz dazu — jetzt %s",
+
+  "mchelden.command.phase.current": "Phase: %s",
+  "mchelden.command.phase.set": "Phase gesetzt auf %s",
+  "mchelden.command.info.unknown": "  kein Zustand gespeichert — war noch nie auf dem Server",
+  "mchelden.command.info.hearts": "Herzen",
+  "mchelden.command.info.bounty": "Bounty",
+  "mchelden.command.info.playtime": "Spielzeit",
+  "mchelden.command.info.status": "Status",
+  "mchelden.command.info.bounty.none": "kein Ziel",
+  "mchelden.command.info.bounty.resolved": "aufgelöst",
+  "mchelden.command.info.status.active": "aktiv",
+  "mchelden.command.info.status.eliminated": "ausgeschieden",
+  "mchelden.command.info.playtime.left": "%s übrig",
+  "mchelden.command.revive": "%s ist zurück im Spiel mit %s Herzen"
+}

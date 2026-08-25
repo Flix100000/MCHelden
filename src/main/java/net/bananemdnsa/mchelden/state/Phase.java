@@ -2,25 +2,25 @@ package net.bananemdnsa.mchelden.state;
 
 import javax.annotation.Nullable;
 
+import net.minecraft.network.chat.Component;
+
 public enum Phase {
-    AUFBAU("aufbau", "Aufbau"),
-    KRIEG("krieg", "Krieg"),
-    FINAL_WAR("finalwar", "Final War");
+    AUFBAU("aufbau"),
+    KRIEG("krieg"),
+    FINAL_WAR("finalwar");
 
     private final String id;
-    private final String displayName;
 
-    Phase(String id, String displayName) {
+    Phase(String id) {
         this.id = id;
-        this.displayName = displayName;
     }
 
     public String getId() {
         return id;
     }
 
-    public String getDisplayName() {
-        return displayName;
+    public Component getDisplayName() {
+        return Component.translatable("mchelden.phase." + id);
     }
 
     @Nullable
