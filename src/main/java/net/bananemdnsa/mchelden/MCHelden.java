@@ -3,9 +3,11 @@ package net.bananemdnsa.mchelden;
 import com.mojang.logging.LogUtils;
 
 import net.bananemdnsa.mchelden.command.HeldenCommand;
+import net.bananemdnsa.mchelden.hearts.HeartEvents;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
+import net.bananemdnsa.mchelden.text.HeldenText;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
@@ -29,6 +31,7 @@ public class MCHelden {
 
         NeoForge.EVENT_BUS.addListener(this::registerCommands);
         NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
+        NeoForge.EVENT_BUS.addListener(HeartEvents::onLivingDeath);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
@@ -39,7 +42,7 @@ public class MCHelden {
         HeldenCommand.register(event.getDispatcher());
     }
 
-    /** Legt beim ersten Join den Zustand an und schickt ihn an den Client. */
+    /** Legt beim ersten Join den Zustand an, weist Ausgeschiedene ab, synct den Rest. */
     private void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || player.getServer() == null) {
             return;
@@ -49,6 +52,11 @@ public class MCHelden {
         PlayerState state = store.getOrCreate(player.getUUID());
         state.setName(player.getGameProfile().getName());
         store.setDirty();
+
+        if (state.isEliminated()) {
+            player.connection.disconnect(HeldenText.eliminationKickScreen());
+            return;
+        }
 
         NetworkHandler.syncTo(player);
     }

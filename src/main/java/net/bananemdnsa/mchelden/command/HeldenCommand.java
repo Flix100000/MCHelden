@@ -6,8 +6,12 @@ import java.util.UUID;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 
+import net.bananemdnsa.mchelden.hearts.Elimination;
+import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.PlayerState;
@@ -33,6 +37,29 @@ public final class HeldenCommand {
                                 .executes(context -> info(
                                         context.getSource(),
                                         GameProfileArgument.getGameProfiles(context, "spieler")))))
+                .then(Commands.literal("heart")
+                        .then(heartDeltaBranch("give", 1))
+                        .then(heartDeltaBranch("remove", -1))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
+                                        .then(Commands.argument("anzahl",
+                                                        IntegerArgumentType.integer(0, PlayerState.MAX_HEARTS))
+                                                .executes(context -> heartSet(
+                                                        context.getSource(),
+                                                        GameProfileArgument.getGameProfiles(context, "spieler"),
+                                                        IntegerArgumentType.getInteger(context, "anzahl")))))))
+                .then(Commands.literal("revive")
+                        .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
+                                .executes(context -> revive(
+                                        context.getSource(),
+                                        GameProfileArgument.getGameProfiles(context, "spieler"),
+                                        PlayerState.DEFAULT_HEARTS))
+                                .then(Commands.argument("herzen",
+                                                IntegerArgumentType.integer(1, PlayerState.MAX_HEARTS))
+                                        .executes(context -> revive(
+                                                context.getSource(),
+                                                GameProfileArgument.getGameProfiles(context, "spieler"),
+                                                IntegerArgumentType.getInteger(context, "herzen"))))))
                 .then(Commands.literal("phase")
                         .then(Commands.literal("info")
                                 .executes(context -> phaseInfo(context.getSource())))
@@ -43,6 +70,61 @@ public final class HeldenCommand {
                                         .executes(context -> phaseSet(
                                                 context.getSource(),
                                                 StringArgumentType.getString(context, "phase")))))));
+    }
+
+    /** Baut den give- bzw. remove-Zweig. Beide unterscheiden sich nur im Vorzeichen. */
+    private static LiteralArgumentBuilder<CommandSourceStack> heartDeltaBranch(String name, int sign) {
+        return Commands.literal(name)
+                .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
+                        .executes(context -> heartDelta(
+                                context.getSource(),
+                                GameProfileArgument.getGameProfiles(context, "spieler"),
+                                sign))
+                        .then(Commands.argument("anzahl",
+                                        IntegerArgumentType.integer(1, PlayerState.MAX_HEARTS))
+                                .executes(context -> heartDelta(
+                                        context.getSource(),
+                                        GameProfileArgument.getGameProfiles(context, "spieler"),
+                                        sign * IntegerArgumentType.getInteger(context, "anzahl")))));
+    }
+
+    private static int heartDelta(CommandSourceStack source, Collection<GameProfile> profiles, int delta) {
+        MinecraftServer server = source.getServer();
+        for (GameProfile profile : profiles) {
+            int now = HeartManager.add(server, profile.getId(), delta, "");
+            report(source, profile, now);
+        }
+        return profiles.size();
+    }
+
+    private static int heartSet(CommandSourceStack source, Collection<GameProfile> profiles, int hearts) {
+        MinecraftServer server = source.getServer();
+        for (GameProfile profile : profiles) {
+            int now = HeartManager.set(server, profile.getId(), hearts, "");
+            report(source, profile, now);
+        }
+        return profiles.size();
+    }
+
+    private static int revive(CommandSourceStack source, Collection<GameProfile> profiles, int hearts) {
+        MinecraftServer server = source.getServer();
+        for (GameProfile profile : profiles) {
+            Elimination.revive(server, profile.getId(), hearts);
+            source.sendSuccess(() -> Component.literal(nameOf(profile) + " ist zurück im Spiel mit "
+                    + hearts + " Herzen").withStyle(ChatFormatting.GREEN), true);
+        }
+        return profiles.size();
+    }
+
+    private static void report(CommandSourceStack source, GameProfile profile, int hearts) {
+        source.sendSuccess(() -> Component.literal(nameOf(profile) + ": ")
+                .withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(hearts + " / " + PlayerState.MAX_HEARTS)
+                        .withStyle(hearts == 0 ? ChatFormatting.RED : ChatFormatting.WHITE)), true);
+    }
+
+    private static String nameOf(GameProfile profile) {
+        return profile.getName() != null ? profile.getName() : profile.getId().toString();
     }
 
     private static int phaseSet(CommandSourceStack source, String phaseId) {
