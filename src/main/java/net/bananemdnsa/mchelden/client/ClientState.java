@@ -23,7 +23,7 @@ public final class ClientState {
     }
 
     /** Dauer der Herzverlust-Animation in Ticks. */
-    public static final int LOSS_ANIMATION_TICKS = 16;
+    public static final int LOSS_ANIMATION_TICKS = 20;
 
     private static int lossAnimationTicks;
 
@@ -51,9 +51,14 @@ public final class ClientState {
         return lossAnimationTicks > 0;
     }
 
-    /** 1.0 am Anfang der Animation, 0.0 am Ende. */
-    public static float lossAnimationProgress() {
-        return lossAnimationTicks / (float) LOSS_ANIMATION_TICKS;
+    /**
+     * 1.0 am Anfang der Animation, 0.0 am Ende.
+     *
+     * <p>Der Teiltick muss mit hinein, sonst ruckeln die Bruchstücke im Tick-Takt statt
+     * flüssig zu fliegen.
+     */
+    public static float lossAnimationProgress(float partialTick) {
+        return Math.max(0f, lossAnimationTicks - partialTick) / LOSS_ANIMATION_TICKS;
     }
 
     public static void accept(StateSyncPayload payload) {
