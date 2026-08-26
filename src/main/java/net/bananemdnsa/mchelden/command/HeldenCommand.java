@@ -9,9 +9,11 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.bananemdnsa.mchelden.hearts.Elimination;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
+import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.PlayerState;
@@ -25,6 +27,7 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 
 public final class HeldenCommand {
     private HeldenCommand() {
@@ -61,6 +64,11 @@ public final class HeldenCommand {
                                                 context.getSource(),
                                                 GameProfileArgument.getGameProfiles(context, "spieler"),
                                                 IntegerArgumentType.getInteger(context, "herzen"))))))
+                .then(Commands.literal("debug")
+                        .then(Commands.literal("death")
+                                .executes(context -> debugDeath(context.getSource())))
+                        .then(Commands.literal("animation")
+                                .executes(context -> debugAnimation(context.getSource()))))
                 .then(Commands.literal("phase")
                         .then(Commands.literal("info")
                                 .executes(context -> phaseInfo(context.getSource())))
@@ -165,6 +173,40 @@ public final class HeldenCommand {
         source.sendSuccess(() -> Component.literal(nameOf(profile) + ": ")
                 .withStyle(ChatFormatting.GRAY)
                 .append(heartsValue(hearts)), true);
+    }
+
+    /**
+     * Stellt einen Tod durch einen Spieler nach — mit Todesbildschirm, Respawn und der
+     * dort nachgeholten Animation. Prüft also den kompletten Ablauf, nicht nur die Optik.
+     *
+     * <p>Erst töten, dann das Herz abziehen: nur in dieser Reihenfolge ist der Spieler beim
+     * Abzug bereits tot, und die Anzeige wird wie im Ernstfall bis zum Respawn vorgemerkt.
+     */
+    private static int debugDeath(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+
+        player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
+        HeartManager.loseHeart(source.getServer(), player.getUUID(), "Debug");
+
+        source.sendSuccess(() -> Component.literal("Spielertod nachgestellt — Animation folgt beim Respawn")
+                .withStyle(ChatFormatting.GRAY), false);
+        return 1;
+    }
+
+    /**
+     * Spielt nur den Effekt ab, ohne etwas am Zustand zu ändern. Zum Abstimmen der Optik,
+     * ohne jedes Mal zu sterben.
+     *
+     * <p>Der Herzstand bleibt dabei unverändert, die HUD-Scherbe erscheint deswegen an dem
+     * Slot hinter dem letzten vollen Herz. Für das grosse Overlay spielt das keine Rolle.
+     */
+    private static int debugAnimation(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        NetworkHandler.sendHeartLost(player, HeartManager.get(source.getServer(), player.getUUID()));
+
+        source.sendSuccess(() -> Component.literal("Effekt abgespielt — Herzstand unverändert")
+                .withStyle(ChatFormatting.GRAY), false);
+        return 1;
     }
 
     private static int phaseSet(CommandSourceStack source, String phaseId) {

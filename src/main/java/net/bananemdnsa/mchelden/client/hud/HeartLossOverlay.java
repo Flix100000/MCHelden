@@ -33,7 +33,7 @@ public final class HeartLossOverlay {
 
     /** Kantenlänge des grossen Herzens, als Anteil der Bildschirmhöhe. */
     private static final float HEART_HEIGHT_FRACTION = 0.34f;
-    /** Wie weit die Bruchstücke fliegen, als Anteil der Bildschirmbreite. */
+    /** Wie weit die Brocken fliegen, als Anteil der Bildschirmbreite. */
     private static final float SPREAD_FRACTION = 0.75f;
     private static final float GRAVITY_FRACTION = 0.35f;
     private static final float SPIN_DEGREES = 260f;
@@ -43,20 +43,20 @@ public final class HeartLossOverlay {
     private static final float FLASH_ALPHA = 0.30f;
     private static final float FLASH_PORTION = 0.30f;
 
-    private static final int CRACK_COUNT = 9;
-    private static final int CRACK_POINTS = 6;
-    /** Wie weit die Risse reichen, als Anteil der grösseren Bildschirmkante. */
-    private static final float CRACK_REACH = 0.80f;
-    /** Risse rasen schneller nach aussen als die Bruchstücke fliegen. */
-    private static final float CRACK_SPEED = 2.4f;
-    private static final int CRACK_COLOR = 0x00D2E8FF;
+    /** Anzahl der kleinen Splitter, die beim Zerplatzen mitfliegen. */
+    private static final int SPRAY_COUNT = 46;
+    /** Wie weit die Splitter fliegen, als Anteil der grösseren Bildschirmkante. */
+    private static final float SPRAY_REACH = 0.62f;
+    /** Splitter sind leichter als die Brocken, fliegen also schneller los. */
+    private static final float SPRAY_SPEED = 1.5f;
+    private static final int[] SPRAY_COLORS = {0x003D8BFD, 0x001E56B4, 0x00C6E2FF};
 
     private static final float[] JITTER_X = {-0.25f, 0.10f, 0.30f, -0.35f, 0.15f, 0.40f, -0.20f, 0.05f, 0.25f};
     private static final float[] JITTER_Y = {-0.30f, -0.45f, -0.20f, 0.10f, -0.55f, 0.05f, 0.35f, 0.20f, 0.30f};
     private static final float[] SPIN = {-1.0f, 0.6f, 1.3f, -0.7f, 0.2f, 1.0f, -1.2f, 0.8f, -0.4f};
 
-    /** Risspfade in normierten Einheiten um die Bildmitte, einmalig mit festem Startwert erzeugt. */
-    private static final float[][] CRACKS = buildCracks();
+    /** Splitterbahnen, einmalig mit festem Startwert erzeugt: Richtung, Tempo, Groesse, Drehung. */
+    private static final float[][] SPRAY = buildSpray();
 
     private HeartLossOverlay() {
     }
@@ -75,7 +75,7 @@ public final class HeartLossOverlay {
 
         RenderSystem.enableBlend();
         renderFlash(graphics, width, height, progress);
-        renderCracks(graphics, width, height, progress);
+        renderSpray(graphics, width, height, progress);
         renderShatter(graphics, width, height, progress, partial);
         RenderSystem.disableBlend();
         graphics.setColor(1f, 1f, 1f, 1f);
@@ -95,71 +95,45 @@ public final class HeartLossOverlay {
     }
 
     /**
-     * Sprünge, die von der Bildmitte nach aussen rasen.
+     * Der Splitterschauer: viele kleine Scherben, die mit den grossen Brocken davonfliegen.
      *
-     * <p>Die Pfade sind prozedural erzeugt statt gezeichnet: dadurch reichen sie bei jeder
-     * Auflösung bis in die Ecken, statt auf ein Seitenverhältnis festgelegt zu sein.
+     * <p>Sie starten in derselben Mitte und gehorchen derselben Schwerkraft wie die Brocken,
+     * sind aber leichter — sie schiessen weiter voraus und sind vor ihnen verschwunden.
      */
-    private static void renderCracks(GuiGraphics graphics, int width, int height, float progress) {
+    private static void renderSpray(GuiGraphics graphics, int width, int height, float progress) {
         if (progress <= 0f) {
             return;
         }
 
-        float reveal = Math.min(1f, progress * CRACK_SPEED);
-        float alpha = Mth.clamp(1f - progress * 1.4f, 0f, 1f);
+        float travel = Math.min(1f, progress * SPRAY_SPEED);
+        float alpha = Mth.clamp(1f - progress * 1.25f, 0f, 1f);
         if (alpha <= 0f) {
             return;
         }
 
-        int color = ((int) (alpha * 255f) << 24) | CRACK_COLOR;
-        float scale = Math.max(width, height) * CRACK_REACH;
+        float reach = Math.max(width, height) * SPRAY_REACH;
+        float gravity = height * GRAVITY_FRACTION * 0.8f;
         float centerX = width / 2f;
         float centerY = height / 2f;
+        int alphaBits = (int) (alpha * 255f) << 24;
 
         PoseStack pose = graphics.pose();
 
-        for (float[] crack : CRACKS) {
-            float previousX = centerX;
-            float previousY = centerY;
+        for (int index = 0; index < SPRAY_COUNT; index++) {
+            float[] shard = SPRAY[index];
+            float distance = reach * shard[2] * travel;
 
-            for (int point = 0; point < CRACK_POINTS; point++) {
-                float pointReveal = (point + 1f) / CRACK_POINTS;
-                if (reveal < pointReveal - 1f / CRACK_POINTS) {
-                    break;
-                }
+            float x = centerX + shard[0] * distance;
+            float y = centerY + shard[1] * distance + gravity * travel * travel;
+            int size = Math.max(1, Math.round(height * shard[3]));
 
-                float targetX = centerX + crack[point * 2] * scale;
-                float targetY = centerY + crack[point * 2 + 1] * scale;
-
-                // Der zuletzt sichtbare Abschnitt wächst noch, statt ruckartig zu erscheinen.
-                float portion = Mth.clamp((reveal - (pointReveal - 1f / CRACK_POINTS)) * CRACK_POINTS, 0f, 1f);
-                float endX = previousX + (targetX - previousX) * portion;
-                float endY = previousY + (targetY - previousY) * portion;
-
-                int thickness = point <= 1 ? 1 : 0;
-                drawSegment(graphics, pose, previousX, previousY, endX, endY, thickness, color);
-
-                previousX = targetX;
-                previousY = targetY;
-            }
+            pose.pushPose();
+            pose.translate(x, y, 0f);
+            pose.mulPose(Axis.ZP.rotationDegrees(shard[4] * 360f * travel));
+            graphics.fill(-size / 2, -size / 2, size / 2 + 1, size / 2 + 1,
+                    alphaBits | SPRAY_COLORS[index % SPRAY_COLORS.length]);
+            pose.popPose();
         }
-    }
-
-    /** Zeichnet eine gedrehte dünne Fläche als Liniensegment. */
-    private static void drawSegment(GuiGraphics graphics, PoseStack pose,
-                                    float x1, float y1, float x2, float y2, int thickness, int color) {
-        float dx = x2 - x1;
-        float dy = y2 - y1;
-        float length = Mth.sqrt(dx * dx + dy * dy);
-        if (length < 0.5f) {
-            return;
-        }
-
-        pose.pushPose();
-        pose.translate(x1, y1, 0f);
-        pose.mulPose(Axis.ZP.rotationDegrees((float) Math.toDegrees(Math.atan2(dy, dx))));
-        graphics.fill(0, -thickness, Math.round(length), thickness + 1, color);
-        pose.popPose();
     }
 
     private static void renderShatter(GuiGraphics graphics, int width, int height,
@@ -204,28 +178,23 @@ public final class HeartLossOverlay {
         }
     }
 
-    private static float[][] buildCracks() {
+    /** Richtung, Tempo, Groesse und Drehung je Splitter. Fester Startwert, damit es reproduzierbar bleibt. */
+    private static float[][] buildSpray() {
         RandomSource random = RandomSource.create(0x48454C44L);
-        float[][] cracks = new float[CRACK_COUNT][];
+        float[][] spray = new float[SPRAY_COUNT][];
 
-        for (int crack = 0; crack < CRACK_COUNT; crack++) {
-            float angle = (float) (Math.PI * 2.0 * crack / CRACK_COUNT)
-                    + (random.nextFloat() - 0.5f) * 0.45f;
+        for (int index = 0; index < SPRAY_COUNT; index++) {
+            float angle = (float) (Math.PI * 2.0 * index / SPRAY_COUNT)
+                    + (random.nextFloat() - 0.5f) * 0.6f;
 
-            float[] path = new float[CRACK_POINTS * 2];
-            float x = 0f;
-            float y = 0f;
-
-            for (int point = 0; point < CRACK_POINTS; point++) {
-                angle += (random.nextFloat() - 0.5f) * 0.55f;
-                float step = 0.09f + random.nextFloat() * 0.07f;
-                x += Mth.cos(angle) * step;
-                y += Mth.sin(angle) * step;
-                path[point * 2] = x;
-                path[point * 2 + 1] = y;
-            }
-            cracks[crack] = path;
+            spray[index] = new float[] {
+                    Mth.cos(angle),
+                    Mth.sin(angle),
+                    0.45f + random.nextFloat() * 0.55f,
+                    0.005f + random.nextFloat() * 0.007f,
+                    random.nextFloat() * 2f - 1f,
+            };
         }
-        return cracks;
+        return spray;
     }
 }
