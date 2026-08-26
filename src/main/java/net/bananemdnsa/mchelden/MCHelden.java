@@ -3,6 +3,7 @@ package net.bananemdnsa.mchelden;
 import com.mojang.logging.LogUtils;
 
 import net.bananemdnsa.mchelden.combat.CombatEvents;
+import net.bananemdnsa.mchelden.combat.CombatLogout;
 import net.bananemdnsa.mchelden.combat.ContainerLock;
 import net.bananemdnsa.mchelden.combat.QuotaEvents;
 import net.bananemdnsa.mchelden.command.HeldenCommand;
@@ -69,6 +70,7 @@ public class MCHelden {
             return;
         }
 
+        CombatLogout.deliverPendingRespawn(player);
         NetworkHandler.syncTo(player);
     }
 }

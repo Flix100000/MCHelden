@@ -31,5 +31,7 @@
   "mchelden.combat.locked": "locked in combat",
   "mchelden.combat.quota.empty": "%s used up for this fight",
   "mchelden.combat.quota.pearl": "Ender pearls",
-  "mchelden.combat.quota.cobweb": "Cobwebs"
+  "mchelden.combat.quota.cobweb": "Cobwebs",
+  "mchelden.death.logout": "%s logged out fighting %s",
+  "mchelden.death.logout.generic": "%s logged out during a fight"
 }

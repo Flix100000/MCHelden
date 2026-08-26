@@ -59,8 +59,9 @@ public final class CombatEvents {
      * Logout mit laufendem Timer zählt als Tod.
      *
      * <p>Ohne diese Regel ist der ganze Timer wertlos, weil jeder verlorene Kampf mit
-     * Alt+F4 endet. Der Tod wird regulär ausgelöst, damit er durch dieselbe Behandlung
-     * läuft wie jeder andere — inklusive allem, was später noch dazukommt.
+     * Alt+F4 endet. Der Ablauf ist in {@link CombatLogout} ausbuchstabiert, statt einen
+     * regulaeren Tod auszuloesen — beim Ausloggen wird der Spieler gerade entfernt, und
+     * alles was nach dem Sterben kaeme faende dann nie statt.
      */
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)
@@ -68,7 +69,7 @@ public final class CombatEvents {
             return;
         }
 
-        player.die(player.damageSources().genericKill());
+        CombatLogout.handle(player);
     }
 
     public static void onServerTick(ServerTickEvent.Post event) {

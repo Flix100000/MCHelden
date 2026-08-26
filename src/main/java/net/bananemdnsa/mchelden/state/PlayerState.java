@@ -26,6 +26,7 @@ public class PlayerState {
     private static final String KEY_PLAYTIME_USED = "playtimeUsed";
     private static final String KEY_PLAYTIME_DAY = "playtimeDay";
     private static final String KEY_ELIMINATED = "eliminated";
+    private static final String KEY_PENDING_RESPAWN = "pendingRespawn";
 
     private final UUID uuid;
     private String name = "";
@@ -36,6 +37,7 @@ public class PlayerState {
     private int playtimeUsedSeconds;
     private long playtimeResetDay = -1L;
     private boolean eliminated;
+    private boolean pendingRespawn;
 
     public PlayerState(UUID uuid) {
         this.uuid = uuid;
@@ -95,6 +97,19 @@ public class PlayerState {
         this.playtimeResetDay = playtimeResetDay;
     }
 
+    /**
+     * Der Spieler ist im Kampf ausgeloggt und muss beim naechsten Join noch respawnt werden.
+     *
+     * <p>Persistent, weil zwischen Ausloggen und Wiederkommen ein Serverneustart liegen kann.
+     */
+    public boolean isPendingRespawn() {
+        return pendingRespawn;
+    }
+
+    public void setPendingRespawn(boolean pendingRespawn) {
+        this.pendingRespawn = pendingRespawn;
+    }
+
     public boolean isEliminated() {
         return eliminated;
     }
@@ -115,6 +130,7 @@ public class PlayerState {
         tag.putInt(KEY_PLAYTIME_USED, playtimeUsedSeconds);
         tag.putLong(KEY_PLAYTIME_DAY, playtimeResetDay);
         tag.putBoolean(KEY_ELIMINATED, eliminated);
+        tag.putBoolean(KEY_PENDING_RESPAWN, pendingRespawn);
         return tag;
     }
 
@@ -127,6 +143,7 @@ public class PlayerState {
         state.playtimeUsedSeconds = tag.getInt(KEY_PLAYTIME_USED);
         state.playtimeResetDay = tag.getLong(KEY_PLAYTIME_DAY);
         state.eliminated = tag.getBoolean(KEY_ELIMINATED);
+        state.pendingRespawn = tag.getBoolean(KEY_PENDING_RESPAWN);
         return state;
     }
 }

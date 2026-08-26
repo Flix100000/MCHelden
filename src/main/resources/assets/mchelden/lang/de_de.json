@@ -31,5 +31,7 @@
   "mchelden.combat.locked": "im Kampf gesperrt",
   "mchelden.combat.quota.empty": "%s für diesen Kampf aufgebraucht",
   "mchelden.combat.quota.pearl": "Enderperlen",
-  "mchelden.combat.quota.cobweb": "Spinnweben"
+  "mchelden.combat.quota.cobweb": "Spinnweben",
+  "mchelden.death.logout": "%s hat sich im Kampf gegen %s ausgeloggt",
+  "mchelden.death.logout.generic": "%s hat sich im Kampf ausgeloggt"
 }

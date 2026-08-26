@@ -40,6 +40,14 @@ public final class HeldenText {
         return Component.translatable("mchelden.heart.gained", total).withStyle(ChatFormatting.AQUA);
     }
 
+    public static Component combatLogout(String player, String opponent) {
+        return opponent.isEmpty()
+                ? Component.translatable("mchelden.death.logout.generic", player)
+                        .withStyle(ChatFormatting.RED)
+                : Component.translatable("mchelden.death.logout", player, opponent)
+                        .withStyle(ChatFormatting.RED);
+    }
+
     public static Component containerLocked() {
         return Component.translatable("mchelden.combat.locked").withStyle(ChatFormatting.RED);
     }
