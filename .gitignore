@@ -1,46 +1,41 @@
-### Gradle ###
-.gradle
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/**/build/
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
 
-### IntelliJ IDEA ###
-.idea/
+# idea
+out
+*.ipr
 *.iws
 *.iml
-*.ipr
-out/
-!**/src/**/out/
+# keep everything out of .idea except the project icon
+.idea/*
+!.idea/icon.png
 
-.run/
+# gradle
+build
+.gradle
 
-### Eclipse ###
-.apt_generated
-.classpath
-.eclipse/
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/**/bin/
+# other
+eclipse
+run
+runs
+run-data
+run-server
+run-gametest
 
-### VS Code ###
+repo
+
+# claude / editor
+.claude/
 .vscode/
+CLAUDE.md
+docs/superpowers/
+.superpowers/
 
-### Mac OS ###
-.DS_Store
-
-### Minecraft Modding ###
-run/
-!**/src/**/run/
-**/src/generated/**/.cache/
-repo/
-!**/src/**/repo/
-
-### Logs ###
-logs/
-
-### Docs ###
+# docs/ holds local notes and brainstorm specs, never part of the repo.
 docs/
+logs/
