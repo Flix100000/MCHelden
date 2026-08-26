@@ -43,6 +43,18 @@ public final class HeartLossOverlay {
     private static final float FLASH_ALPHA = 0.30f;
     private static final float FLASH_PORTION = 0.30f;
 
+    /** Breite der Vignette am Rand, als Anteil der kuerzeren Bildschirmkante. */
+    private static final float VIGNETTE_BAND = 0.20f;
+    private static final float VIGNETTE_ALPHA = 0.75f;
+    private static final int VIGNETTE_COLOR = 0x00280409;
+    private static final int VIGNETTE_STEPS = 14;
+
+    /** Wann die Splitter den Rand erreichen — dort schlaegt der blaue Saum an. */
+    private static final float RIM_PEAK = 0.34f;
+    private static final float RIM_SPAN = 0.26f;
+    private static final float RIM_ALPHA = 0.55f;
+    private static final int RIM_COLOR = 0x008CC4FF;
+
     /** Anzahl der kleinen Splitter, die beim Zerplatzen mitfliegen. */
     private static final int SPRAY_COUNT = 46;
     /** Wie weit die Splitter fliegen, als Anteil der grösseren Bildschirmkante. */
@@ -75,8 +87,10 @@ public final class HeartLossOverlay {
 
         RenderSystem.enableBlend();
         renderFlash(graphics, width, height, progress);
+        renderVignette(graphics, width, height, progress);
         renderSpray(graphics, width, height, progress);
         renderShatter(graphics, width, height, progress, partial);
+        renderRim(graphics, width, height, progress);
         RenderSystem.disableBlend();
         graphics.setColor(1f, 1f, 1f, 1f);
     }
@@ -92,6 +106,71 @@ public final class HeartLossOverlay {
         if (alpha > 0) {
             graphics.fill(0, 0, width, height, (alpha << 24) | 0x00A0140A);
         }
+    }
+
+    /**
+     * Dunkle Vignette, die von aussen hereinkriecht.
+     *
+     * <p>Als gestaffelte Streifen statt als Verlauf gezeichnet: Minecrafts Verlaufsfunktion
+     * kann nur senkrecht, und die Vignette braucht alle vier Seiten. Die Streifen ueberlagern
+     * sich in den Ecken von selbst, was dort genau die gewuenschte Verdichtung ergibt.
+     */
+    private static void renderVignette(GuiGraphics graphics, int width, int height, float progress) {
+        if (progress <= 0f) {
+            return;
+        }
+
+        float rise = Mth.clamp(progress / 0.12f, 0f, 1f);
+        float fall = Mth.clamp(1f - (progress - 0.30f) / 0.70f, 0f, 1f);
+        float strength = rise * fall;
+        if (strength <= 0f) {
+            return;
+        }
+
+        int band = Math.round(Math.min(width, height) * VIGNETTE_BAND);
+        int thickness = Math.max(1, band / VIGNETTE_STEPS);
+
+        for (int step = 0; step < VIGNETTE_STEPS; step++) {
+            float falloff = 1f - step / (float) VIGNETTE_STEPS;
+            int alpha = (int) (falloff * falloff * strength * VIGNETTE_ALPHA * 255f);
+            if (alpha <= 0) {
+                continue;
+            }
+
+            int color = (alpha << 24) | VIGNETTE_COLOR;
+            int offset = step * thickness;
+            graphics.fill(0, offset, width, offset + thickness, color);
+            graphics.fill(0, height - offset - thickness, width, height - offset, color);
+            graphics.fill(offset, 0, offset + thickness, height, color);
+            graphics.fill(width - offset - thickness, 0, width - offset, height, color);
+        }
+    }
+
+    /**
+     * Blauer Saum am aeussersten Rand — der Moment, in dem die Splitter dort ankommen.
+     *
+     * <p>Schliesst den Bogen von der Bildmitte bis zur Kante: der Rand leuchtet nicht einfach,
+     * er wird getroffen.
+     */
+    private static void renderRim(GuiGraphics graphics, int width, int height, float progress) {
+        float distance = Math.abs(progress - RIM_PEAK);
+        if (progress <= 0f || distance > RIM_SPAN) {
+            return;
+        }
+
+        float strength = 1f - distance / RIM_SPAN;
+        int alpha = (int) (strength * strength * RIM_ALPHA * 255f);
+        if (alpha <= 0) {
+            return;
+        }
+
+        int color = (alpha << 24) | RIM_COLOR;
+        int thickness = Math.max(2, Math.round(Math.min(width, height) * 0.008f));
+
+        graphics.fill(0, 0, width, thickness, color);
+        graphics.fill(0, height - thickness, width, height, color);
+        graphics.fill(0, 0, thickness, height, color);
+        graphics.fill(width - thickness, 0, width, height, color);
     }
 
     /**

@@ -6,6 +6,7 @@ import net.bananemdnsa.mchelden.state.PlayerState;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 
@@ -47,7 +48,6 @@ public final class ClientState {
     public static void onHeartLost(int remaining) {
         hearts = remaining;
         lossTicks = LOSS_TOTAL_TICKS;
-        playSound(SoundEvents.WARDEN_HEARTBEAT, 1.4f, 0.7f);
     }
 
     public static void tick() {
@@ -56,14 +56,33 @@ public final class ClientState {
         }
 
         lossTicks--;
+        playSoundtrack(LOSS_TOTAL_TICKS - lossTicks);
+    }
 
-        // Der Glasbruch gehoert an den Moment des Bruchs, nicht an den Anfang des Haltens.
-        if (lossTicks == LOSS_SHATTER_TICKS) {
-            playSound(SoundEvents.GLASS_BREAK, 1.0f, 0.5f);
+    /**
+     * Die Tonspur des Herzverlusts.
+     *
+     * <p>Ein einzelner Klang traegt so einen Moment nicht. Der Bruch besteht deswegen aus drei
+     * gleichzeitigen Schichten — Splittern, Kristall und Wucht —, davor zwei sich beschleunigende
+     * Herzschlaege und danach ein Nachklang der herabrieselnden Scherben.
+     */
+    private static void playSoundtrack(int elapsed) {
+        switch (elapsed) {
+            case 1 -> play(SoundEvents.WARDEN_HEARTBEAT, 1.6f, 0.5f);
+            case 6 -> play(SoundEvents.WARDEN_HEARTBEAT, 1.8f, 0.65f);
+            case LOSS_HOLD_TICKS -> {
+                play(SoundEvents.GLASS_BREAK, 1.0f, 0.5f);
+                play(SoundEvents.AMETHYST_BLOCK_BREAK, 1.3f, 0.6f);
+                play(SoundEvents.TRIDENT_THUNDER.value(), 0.6f, 0.7f);
+            }
+            case LOSS_HOLD_TICKS + 3 -> play(SoundEvents.AMETHYST_CLUSTER_BREAK, 0.8f, 1.4f);
+            case LOSS_HOLD_TICKS + 9 -> play(SoundEvents.AMETHYST_CLUSTER_BREAK, 0.5f, 1.7f);
+            default -> {
+            }
         }
     }
 
-    private static void playSound(net.minecraft.sounds.SoundEvent sound, float volume, float pitch) {
+    private static void play(SoundEvent sound, float volume, float pitch) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player != null) {
             player.playSound(sound, volume, pitch);
