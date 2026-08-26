@@ -22,10 +22,14 @@
   "mchelden.command.info.status.eliminated": "eliminated",
   "mchelden.command.info.playtime.left": "%s left",
   "mchelden.command.revive": "%s is back in the game with %s hearts",
-  "mchelden.combat.label": "in combat · %s",
+  "mchelden.combat.label": "In Combat · %s",
   "mchelden.death.fall": "%s fell to their death fleeing from %s",
   "mchelden.death.drown": "%s drowned fleeing from %s",
   "mchelden.death.fire": "%s burned to death fleeing from %s",
   "mchelden.death.explosion": "%s was blown up fleeing from %s",
-  "mchelden.death.generic": "%s died fighting %s"
+  "mchelden.death.generic": "%s died fighting %s",
+  "mchelden.combat.locked": "locked in combat",
+  "mchelden.combat.quota.empty": "%s used up for this fight",
+  "mchelden.combat.quota.pearl": "Ender pearls",
+  "mchelden.combat.quota.cobweb": "Cobwebs"
 }

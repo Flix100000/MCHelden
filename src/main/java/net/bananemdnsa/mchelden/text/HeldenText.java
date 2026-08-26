@@ -40,6 +40,15 @@ public final class HeldenText {
         return Component.translatable("mchelden.heart.gained", total).withStyle(ChatFormatting.AQUA);
     }
 
+    public static Component containerLocked() {
+        return Component.translatable("mchelden.combat.locked").withStyle(ChatFormatting.RED);
+    }
+
+    public static Component quotaEmpty(net.bananemdnsa.mchelden.combat.ItemQuota.Kind kind) {
+        return Component.translatable("mchelden.combat.quota.empty",
+                Component.translatable(kind.translationKey())).withStyle(ChatFormatting.RED);
+    }
+
     public static Component phaseCurrent(Component phase) {
         return Component.translatable("mchelden.command.phase.current", phase).withStyle(ChatFormatting.GRAY);
     }

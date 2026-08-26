@@ -77,6 +77,7 @@ public final class CombatTracker {
     /** Nimmt den Timer weg, ohne dass er abgelaufen ist. Für {@code /helden combat clear}. */
     public static void clear(ServerPlayer player) {
         if (TAGS.remove(player.getUUID()) != null) {
+            ItemQuota.reset(player.getUUID());
             NetworkHandler.sendCombat(player, 0);
         }
     }
@@ -115,6 +116,8 @@ public final class CombatTracker {
             }
 
             entries.remove();
+            ItemQuota.reset(entry.getKey());
+
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
             if (player != null) {
                 NetworkHandler.sendCombat(player, 0);
