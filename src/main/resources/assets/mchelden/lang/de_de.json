@@ -22,5 +22,10 @@
   "mchelden.command.info.status.eliminated": "ausgeschieden",
   "mchelden.command.info.playtime.left": "%s übrig",
   "mchelden.command.revive": "%s ist zurück im Spiel mit %s Herzen",
-  "mchelden.combat.label": "im kampf · %s"
+  "mchelden.combat.label": "im kampf · %s",
+  "mchelden.death.fall": "%s ist auf der Flucht vor %s in den Tod gestürzt",
+  "mchelden.death.drown": "%s ist auf der Flucht vor %s ertrunken",
+  "mchelden.death.fire": "%s ist auf der Flucht vor %s verbrannt",
+  "mchelden.death.explosion": "%s ist auf der Flucht vor %s in die Luft geflogen",
+  "mchelden.death.generic": "%s ist im Kampf mit %s gestorben"
 }

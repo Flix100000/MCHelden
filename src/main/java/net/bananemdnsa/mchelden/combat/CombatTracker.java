@@ -27,6 +27,15 @@ public final class CombatTracker {
 
     private static final Map<UUID, Tag> TAGS = new ConcurrentHashMap<>();
 
+    /**
+     * Gegner beim letzten Kampftod, bis die Todesnachricht erzeugt wurde.
+     *
+     * <p>Minecraft feuert das Todes-Event vor der Nachrichtenerzeugung. Bis die Nachricht
+     * gebaut wird, ist der Timer laengst geraeumt — der Gegner muss also zwischengelagert
+     * werden, sonst steht in der Nachricht niemand mehr.
+     */
+    private static final Map<UUID, String> DEATH_OPPONENTS = new ConcurrentHashMap<>();
+
     private CombatTracker() {
     }
 
@@ -70,6 +79,19 @@ public final class CombatTracker {
         if (TAGS.remove(player.getUUID()) != null) {
             NetworkHandler.sendCombat(player, 0);
         }
+    }
+
+    /** Merkt sich den Gegner fuer die gleich folgende Todesnachricht. */
+    public static void recordCombatDeath(UUID uuid, String opponent) {
+        if (opponent != null && !opponent.isEmpty()) {
+            DEATH_OPPONENTS.put(uuid, opponent);
+        }
+    }
+
+    /** Holt den Gegner des letzten Kampftods und verbraucht ihn dabei. */
+    @Nullable
+    public static String consumeCombatDeath(UUID uuid) {
+        return DEATH_OPPONENTS.remove(uuid);
     }
 
     /** Vergisst einen Spieler ersatzlos, ohne ihm etwas zu schicken. */

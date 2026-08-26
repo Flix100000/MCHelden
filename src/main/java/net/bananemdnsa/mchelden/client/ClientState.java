@@ -40,6 +40,12 @@ public final class ClientState {
     private static int combatEnterTicks;
     private static int combatExitTicks;
 
+    /** Ein einzelner nachgereichter Ton, fuer zweitoenige Figuren. */
+    private static SoundEvent pendingSound;
+    private static float pendingVolume;
+    private static float pendingPitch;
+    private static int pendingDelay;
+
     /** Dauer des Aufleuchtens nach einem Treffer. */
     public static final int COMBAT_FLASH_TICKS = 7;
     /** Wie lange der Balken beim Kampfbeginn einschwebt. */
@@ -76,16 +82,29 @@ public final class ClientState {
     public static void onCombat(int remainingTicks) {
         if (remainingTicks > combatTicks) {
             if (combatTicks == 0) {
-                combatEnterTicks = COMBAT_ENTER_TICKS;
-                combatExitTicks = 0;
-                play(SoundEvents.NOTE_BLOCK_BASEDRUM.value(), 0.9f, 0.6f);
+                beginCombat();
             }
             combatFlashTicks = COMBAT_FLASH_TICKS;
         } else if (remainingTicks == 0 && combatTicks > 0) {
-            combatExitTicks = COMBAT_EXIT_TICKS;
-            play(SoundEvents.NOTE_BLOCK_CHIME.value(), 0.6f, 1.5f);
+            // Erzwungenes Raeumen, etwa per Command oder beim Tod.
+            endCombat();
         }
         combatTicks = remainingTicks;
+    }
+
+    /** Tiefer Schlag, kurz darauf ein zweiter Ton — der Eintritt bekommt einen Moment. */
+    private static void beginCombat() {
+        combatEnterTicks = COMBAT_ENTER_TICKS;
+        combatExitTicks = 0;
+        play(SoundEvents.NOTE_BLOCK_BASEDRUM.value(), 0.9f, 0.6f);
+        playDelayed(SoundEvents.NOTE_BLOCK_BIT.value(), 0.5f, 0.8f, 3);
+    }
+
+    /** Zwei aufsteigende Toene: die Anspannung loest sich, man darf wieder an die Kisten. */
+    private static void endCombat() {
+        combatExitTicks = COMBAT_EXIT_TICKS;
+        play(SoundEvents.NOTE_BLOCK_CHIME.value(), 0.7f, 1.3f);
+        playDelayed(SoundEvents.NOTE_BLOCK_PLING.value(), 0.6f, 1.9f, 4);
     }
 
     /** Balken sichtbar? Nach Kampfende noch waehrend des Ausblendens. */
@@ -117,12 +136,22 @@ public final class ClientState {
     }
 
     public static void tick() {
+        if (pendingDelay > 0 && --pendingDelay == 0 && pendingSound != null) {
+            play(pendingSound, pendingVolume, pendingPitch);
+            pendingSound = null;
+        }
+
         if (combatTicks > 0) {
             combatTicks--;
 
-            // Ticken in den letzten Sekunden. Ein Ton erreicht einen auch dann, wenn man
-            // gerade woanders hinschaut — anders als jedes Blinken.
-            if (combatTicks > 0 && combatTicks <= COMBAT_WARNING_TICKS && combatTicks % 20 == 0) {
+            // Der Client zaehlt selbst herunter und erreicht die Null oft einen Tick vor dem
+            // Paket vom Server. Das Kampfende haengt deswegen hier und nicht am Paket —
+            // sonst wird die Ausblendung genau beim regulaeren Ablaufen verschluckt.
+            if (combatTicks == 0) {
+                endCombat();
+            } else if (combatTicks <= COMBAT_WARNING_TICKS && combatTicks % 20 == 0) {
+                // Ticken in den letzten Sekunden. Ein Ton erreicht einen auch dann, wenn man
+                // gerade woanders hinschaut — anders als jedes Blinken.
                 float step = (COMBAT_WARNING_TICKS - combatTicks) / (float) COMBAT_WARNING_TICKS;
                 play(SoundEvents.NOTE_BLOCK_PLING.value(), 0.7f, 1.2f + step * 0.5f);
             }
@@ -168,6 +197,13 @@ public final class ClientState {
         }
     }
 
+    private static void playDelayed(SoundEvent sound, float volume, float pitch, int delayTicks) {
+        pendingSound = sound;
+        pendingVolume = volume;
+        pendingPitch = pitch;
+        pendingDelay = delayTicks;
+    }
+
     private static void play(SoundEvent sound, float volume, float pitch) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player != null) {
@@ -207,6 +243,8 @@ public final class ClientState {
         combatFlashTicks = 0;
         combatEnterTicks = 0;
         combatExitTicks = 0;
+        pendingSound = null;
+        pendingDelay = 0;
     }
 
     public static int getHearts() {

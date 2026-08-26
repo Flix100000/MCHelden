@@ -47,6 +47,7 @@ public final class CombatEvents {
         }
 
         String killer = CombatTracker.opponentOf(victim.getUUID());
+        CombatTracker.recordCombatDeath(victim.getUUID(), killer);
 
         // clear statt forget: der Client muss erfahren, dass der Kampf vorbei ist, sonst
         // zaehlt er seinen lokalen Stand weiter und zeigt den Balken nach dem Respawn noch.

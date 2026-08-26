@@ -84,6 +84,11 @@ neoForge {
 
         // applies to all the run configs above
         configureEach {
+            // Protokolliert, welche Mixins auf welche Klassen angewendet wurden. Nur in
+            // Dev-Laeufen aktiv — ohne das faellt ein Mixin, dessen Ziel sich verschoben
+            // hat, erst im Spiel auf, und dann als Absturz.
+            systemProperty 'mixin.debug.verbose', 'true'
+
             // Recommended logging data for a userdev environment
             // The markers can be added/remove as needed separated by commas.
             // "SCAN": For mods scan.
