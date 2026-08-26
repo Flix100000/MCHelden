@@ -141,11 +141,13 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
 
     private void drawCentered(Component text, int y, int color, PoseStack poseStack,
                               MultiBufferSource bufferSource, int packedLight) {
-        // POLYGON_OFFSET statt NORMAL: das ist der Modus, mit dem Minecraft selbst Text in
-        // einem Blockentity zeichnet (Schilder). NORMAL gehoert zum Entitaeten-Durchgang und
-        // wird in diesem Durchgang nicht zuverlaessig ausgegeben.
+        // SEE_THROUGH statt tiefengeprueft: der Strahl ist eine Saeule mit 0,19 Bloecken
+        // Radius und schreibt in den Tiefenpuffer. Ein kurzer Name wie "Dev" ist schmaler
+        // als das und lag deswegen vollstaendig hinter der Strahlvorderseite — gezeichnet,
+        // aber unsichtbar. Der Kopf ist breiter als der Strahl und ragte vorne heraus,
+        // deshalb war er zu sehen und der Text nicht.
         font.drawInBatch(text, -font.width(text) / 2f, y, color, false,
-                poseStack.last().pose(), bufferSource, Font.DisplayMode.POLYGON_OFFSET, 0, packedLight);
+                poseStack.last().pose(), bufferSource, Font.DisplayMode.SEE_THROUGH, 0, packedLight);
     }
 
     /** Wie lange der Tod her ist, in ganzen Minuten. */
