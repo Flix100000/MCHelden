@@ -6,6 +6,9 @@ import net.bananemdnsa.mchelden.registry.MCHeldenBlockEntities;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Containers;
+import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -17,9 +20,9 @@ import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -31,7 +34,10 @@ import javax.annotation.Nullable;
  * auffällt.
  *
  * <p>Er wird nie platziert, sondern nur beim Tod gesetzt, und verschwindet von selbst,
- * sobald er leer ist. Deswegen gibt es kein Item dazu und kein Abbauen.
+ * sobald er leer ist. Deswegen gibt es kein Item dazu.
+ *
+ * <p>Im Überlebensmodus ist er unzerstörbar und kolbenfest. Im Kreativmodus lässt er sich
+ * abbauen — das ist gewollt, damit Admins aufräumen können —, dabei fällt aber alles heraus.
  */
 public class GraveBlock extends BaseEntityBlock {
     public static final MapCodec<GraveBlock> CODEC = simpleCodec(GraveBlock::new);
@@ -99,6 +105,26 @@ public class GraveBlock extends BaseEntityBlock {
             grave.open(player);
         }
         return InteractionResult.CONSUME;
+    }
+
+    /**
+     * Beim Abbauen faellt alles heraus, statt spurlos zu verschwinden.
+     *
+     * <p>Im Ueberlebensmodus ist das Grab unzerstoerbar, aber der Kreativmodus ignoriert
+     * Blockhaerte — dort laesst sich auch Bedrock abbauen. Ohne diese Absicherung wuerde ein
+     * versehentlicher Linksklick beim Aufraeumen jemandem seine halbe Ausruestung loeschen.
+     */
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos,
+                            BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof GraveBlockEntity grave) {
+            Containers.dropContents(level, pos, grave);
+
+            if (grave.getStoredXp() > 0 && level instanceof ServerLevel serverLevel) {
+                ExperienceOrb.award(serverLevel, Vec3.atCenterOf(pos), grave.getStoredXp());
+            }
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
     }
 
     @Nullable
