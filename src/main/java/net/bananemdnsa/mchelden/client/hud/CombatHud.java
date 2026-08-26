@@ -15,7 +15,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 
 /**
- * Der Combat-Timer: sechs Felder in einem Rahmen, eines je möglichem Treffer.
+ * Der Combat-Timer: sechs Felder in einem Rahmen, eines je möglichem Treffer, oben mittig.
  *
  * <p>Die Segmentierung ist keine Verzierung. Der Timer besteht mechanisch aus
  * 30-Sekunden-Blöcken — ein durchgehender Balken würde verschlucken, wie oft jemand
@@ -26,10 +26,9 @@ public final class CombatHud {
             ResourceLocation.fromNamespaceAndPath(MCHelden.MODID, "combat");
 
     private static final int SEGMENTS = CombatTracker.MAX_TICKS / CombatTracker.HIT_TICKS;
-    private static final int SEGMENT_WIDTH = 18;
-    private static final int SEGMENT_HEIGHT = 7;
+    private static final int SEGMENT_WIDTH = 15;
+    private static final int SEGMENT_HEIGHT = 6;
     private static final int SEGMENT_GAP = 2;
-    /** Abstand zwischen Rahmenkante und Feldern. */
     private static final int PADDING = 2;
     private static final int BORDER = 1;
 
@@ -39,9 +38,6 @@ public final class CombatHud {
     private static final int FILL_TOP = 0xFFFF8F89;
     private static final int FLASH = 0xFFFFF0EC;
     private static final int TEXT = 0xFFFFB4B4;
-
-    /** Ab wann der Balken pulsiert, weil der Kampf gleich vorbei ist. */
-    private static final int WARNING_TICKS = 3 * 20;
 
     private CombatHud() {
     }
@@ -55,11 +51,8 @@ public final class CombatHud {
         float partial = delta.getGameTimeDeltaPartialTick(false);
         float exit = ClientState.combatExit(partial);
         float enter = ClientState.combatEnter(partial);
-
-        // Beim Einschweben von unten heraufziehen, beim Ausblenden nach oben davonziehen.
-        float alpha = exit > 0f ? exit : enter;
-        int lift = Math.round(exit > 0f ? -(1f - exit) * 3f : (1f - enter) * 4f);
-        if (alpha <= 0.01f) {
+        float open = exit > 0f ? exit : enter;
+        if (open <= 0.01f) {
             return;
         }
 
@@ -68,33 +61,49 @@ public final class CombatHud {
         int outerHeight = SEGMENT_HEIGHT + 2 * (PADDING + BORDER);
 
         int left = HudLayout.centered(graphics, outerWidth);
-        int top = HudLayout.combatTop(graphics) + lift;
+        int top = HudLayout.combatTop(graphics);
+
+        // Aufziehen aus der Mitte statt Ein- und Ausblenden. Minecraft blendet nichts weich —
+        // eine Alpha-Blende wirkt im Interface wie ein Fremdkoerper aus einem anderen Spiel.
+        int visible = Math.max(2, Math.round(outerWidth * open));
+        int clipLeft = left + (outerWidth - visible) / 2;
 
         RenderSystem.enableBlend();
-        drawFrame(graphics, left, top, outerWidth, outerHeight, alpha);
-        drawSegments(graphics, left + PADDING + BORDER, top + PADDING + BORDER, partial, exit, alpha);
-        drawLabel(graphics, minecraft.font, top + outerHeight + 2, alpha);
+        graphics.enableScissor(clipLeft, top, clipLeft + visible, top + outerHeight + 12);
+
+        fillCut(graphics, left, top, left + outerWidth, top + outerHeight, FRAME);
+        fillCut(graphics, left + BORDER, top + BORDER,
+                left + outerWidth - BORDER, top + outerHeight - BORDER, TRACK);
+        drawSegments(graphics, left + PADDING + BORDER, top + PADDING + BORDER, partial, exit);
+        drawLabel(graphics, minecraft.font, top + outerHeight + 3);
+
+        graphics.disableScissor();
         RenderSystem.disableBlend();
     }
 
-    private static void drawFrame(GuiGraphics graphics, int left, int top, int width, int height, float alpha) {
-        graphics.fill(left, top, left + width, top + height, withAlpha(FRAME, alpha));
-        graphics.fill(left + BORDER, top + BORDER, left + width - BORDER, top + height - BORDER,
-                withAlpha(TRACK, alpha));
+    /**
+     * Rechteck mit weggelassenen Eckpixeln.
+     *
+     * <p>So rundet Pixelgrafik ab. Echte weiche Kanten gaebe es nur unscharf, und in einem
+     * Interface aus lauter harten Kanten faellt Unschaerfe sofort als falsch auf.
+     */
+    private static void fillCut(GuiGraphics graphics, int left, int top, int right, int bottom, int color) {
+        graphics.fill(left + 1, top, right - 1, bottom, color);
+        graphics.fill(left, top + 1, left + 1, bottom - 1, color);
+        graphics.fill(right - 1, top + 1, right, bottom - 1, color);
     }
 
-    private static void drawSegments(GuiGraphics graphics, int left, int top,
-                                     float partial, float exit, float alpha) {
+    private static void drawSegments(GuiGraphics graphics, int left, int top, float partial, float exit) {
         int ticks = ClientState.getCombatTicks();
         int full = ticks / CombatTracker.HIT_TICKS;
         float partialSegment = (ticks % CombatTracker.HIT_TICKS) / (float) CombatTracker.HIT_TICKS;
 
         float flash = ClientState.combatFlash(partial);
-        // Kurz vor Schluss pulsiert der ganze Balken — gleich darf man wieder an die Kisten.
-        float warning = ticks > 0 && ticks <= WARNING_TICKS
-                ? (Mth.sin(ticks * 0.45f) * 0.5f + 0.5f) * 0.6f
+        // Harter Wechsel statt sanftem Wogen: ein weiches Pulsieren uebersieht man,
+        // ein Blinken zwischen zwei klaren Zustaenden nicht.
+        float warning = ticks > 0 && ticks <= ClientState.COMBAT_WARNING_TICKS
+                ? (ticks % 10 < 5 ? 1f : 0f)
                 : 0f;
-        // Beim Ausblenden leuchtet er einmal hell auf, statt einfach zu verschwinden.
         float highlight = Math.max(Math.max(flash, warning), exit > 0.55f ? (exit - 0.55f) / 0.45f : 0f);
 
         int base = blend(FILL, FLASH, highlight);
@@ -102,35 +111,27 @@ public final class CombatHud {
 
         for (int index = 0; index < SEGMENTS; index++) {
             int x = left + index * (SEGMENT_WIDTH + SEGMENT_GAP);
-            float fillPortion = index < full ? 1f : index == full ? partialSegment : 0f;
-            if (fillPortion <= 0f) {
+            float portion = index < full ? 1f : index == full ? partialSegment : 0f;
+            if (portion <= 0f) {
                 continue;
             }
 
-            int filled = Math.max(1, Math.round(SEGMENT_WIDTH * fillPortion));
-            graphics.fill(x, top, x + filled, top + SEGMENT_HEIGHT, withAlpha(base, alpha));
+            int filled = Math.max(1, Math.round(SEGMENT_WIDTH * portion));
+            graphics.fill(x, top, x + filled, top + SEGMENT_HEIGHT, base);
             // Hellere Kante oben gibt dem Balken Tiefe, so wie Vanilla es macht.
-            graphics.fill(x, top, x + filled, top + 2, withAlpha(cap, alpha));
+            graphics.fill(x, top, x + filled, top + 2, cap);
         }
     }
 
-    private static void drawLabel(GuiGraphics graphics, Font font, int top, float alpha) {
+    private static void drawLabel(GuiGraphics graphics, Font font, int top) {
         Component label = Component.translatable("mchelden.combat.label",
                 formatTime(ClientState.getCombatTicks()));
-        int width = font.width(label);
-
-        graphics.drawString(font, label, (graphics.guiWidth() - width) / 2, top,
-                withAlpha(TEXT, alpha), true);
+        graphics.drawString(font, label, (graphics.guiWidth() - font.width(label)) / 2, top, TEXT, true);
     }
 
     private static String formatTime(int ticks) {
         int seconds = Mth.ceil(ticks / 20f);
         return String.format("%d:%02d", seconds / 60, seconds % 60);
-    }
-
-    private static int withAlpha(int color, float alpha) {
-        int value = (int) ((color >>> 24) * Mth.clamp(alpha, 0f, 1f));
-        return (value << 24) | (color & 0x00FFFFFF);
     }
 
     private static int blend(int from, int to, float amount) {

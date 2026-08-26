@@ -44,8 +44,10 @@ public final class ClientState {
     public static final int COMBAT_FLASH_TICKS = 7;
     /** Wie lange der Balken beim Kampfbeginn einschwebt. */
     public static final int COMBAT_ENTER_TICKS = 6;
-    /** Wie lange er nach Kampfende noch nachleuchtet und ausblendet. */
+    /** Wie lange er nach Kampfende noch nachleuchtet und zusammenfaehrt. */
     public static final int COMBAT_EXIT_TICKS = 12;
+    /** Ab wann der Countdown tickt und der Balken pulsiert. */
+    public static final int COMBAT_WARNING_TICKS = 3 * 20;
 
     private ClientState() {
     }
@@ -76,6 +78,7 @@ public final class ClientState {
             if (combatTicks == 0) {
                 combatEnterTicks = COMBAT_ENTER_TICKS;
                 combatExitTicks = 0;
+                play(SoundEvents.NOTE_BLOCK_BASEDRUM.value(), 0.9f, 0.6f);
             }
             combatFlashTicks = COMBAT_FLASH_TICKS;
         } else if (remainingTicks == 0 && combatTicks > 0) {
@@ -116,6 +119,13 @@ public final class ClientState {
     public static void tick() {
         if (combatTicks > 0) {
             combatTicks--;
+
+            // Ticken in den letzten Sekunden. Ein Ton erreicht einen auch dann, wenn man
+            // gerade woanders hinschaut — anders als jedes Blinken.
+            if (combatTicks > 0 && combatTicks <= COMBAT_WARNING_TICKS && combatTicks % 20 == 0) {
+                float step = (COMBAT_WARNING_TICKS - combatTicks) / (float) COMBAT_WARNING_TICKS;
+                play(SoundEvents.NOTE_BLOCK_PLING.value(), 0.7f, 1.2f + step * 0.5f);
+            }
         }
         if (combatFlashTicks > 0) {
             combatFlashTicks--;
