@@ -55,7 +55,7 @@ public final class CombatTracker {
         tag.ticks = Math.min(MAX_TICKS, tag.ticks + HIT_TICKS);
         tag.opponent = opponent;
 
-        NetworkHandler.sendCombat(player, tag.ticks);
+        NetworkHandler.sendCombat(player);
     }
 
     public static boolean isInCombat(UUID uuid) {
@@ -78,7 +78,7 @@ public final class CombatTracker {
     public static void clear(ServerPlayer player) {
         if (TAGS.remove(player.getUUID()) != null) {
             ItemQuota.reset(player.getUUID());
-            NetworkHandler.sendCombat(player, 0);
+            NetworkHandler.sendCombat(player);
         }
     }
 
@@ -120,7 +120,7 @@ public final class CombatTracker {
 
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
             if (player != null) {
-                NetworkHandler.sendCombat(player, 0);
+                NetworkHandler.sendCombat(player);
             }
         }
     }

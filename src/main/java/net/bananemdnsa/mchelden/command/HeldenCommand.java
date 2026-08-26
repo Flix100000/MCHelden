@@ -12,6 +12,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.bananemdnsa.mchelden.combat.CombatTracker;
+import net.bananemdnsa.mchelden.combat.ItemQuota;
 import net.bananemdnsa.mchelden.hearts.Elimination;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
@@ -75,6 +76,8 @@ public final class HeldenCommand {
                 .then(Commands.literal("debug")
                         .then(Commands.literal("combat")
                                 .executes(context -> debugCombat(context.getSource())))
+                        .then(Commands.literal("quota")
+                                .executes(context -> debugQuota(context.getSource())))
                         .then(Commands.literal("death")
                                 .executes(context -> debugDeath(context.getSource())))
                         .then(Commands.literal("animation")
@@ -238,6 +241,19 @@ public final class HeldenCommand {
 
         source.sendSuccess(() -> Component.literal("Treffer simuliert — Timer bei "
                 + CombatTracker.remainingTicks(player.getUUID()) / 20 + " Sekunden")
+                .withStyle(ChatFormatting.GRAY), false);
+        return 1;
+    }
+
+    /** Leert die Kontingente, damit sich der aufgebrauchte Zustand ansehen laesst. */
+    private static int debugQuota(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!CombatTracker.isInCombat(player.getUUID())) {
+            CombatTracker.extend(player, "Debug");
+        }
+        ItemQuota.drain(player);
+
+        source.sendSuccess(() -> Component.literal("Kontingente aufgebraucht")
                 .withStyle(ChatFormatting.GRAY), false);
         return 1;
     }

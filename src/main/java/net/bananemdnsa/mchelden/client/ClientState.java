@@ -40,6 +40,9 @@ public final class ClientState {
     private static int combatEnterTicks;
     private static int combatExitTicks;
 
+    private static int pearlsLeft;
+    private static int cobwebsLeft;
+
     /** Ein einzelner nachgereichter Ton, fuer zweitoenige Figuren. */
     private static SoundEvent pendingSound;
     private static float pendingVolume;
@@ -79,7 +82,11 @@ public final class ClientState {
      * auf null, ist der Kampf ausgelaufen und man darf wieder an Kisten und in die Safezone.
      * Genau das braucht einen Ton, weil man es nach drei Minuten sonst nicht mitbekommt.
      */
-    public static void onCombat(int remainingTicks) {
+    public static void onCombat(net.bananemdnsa.mchelden.network.CombatSyncPayload payload) {
+        pearlsLeft = payload.pearlsLeft();
+        cobwebsLeft = payload.cobwebsLeft();
+
+        int remainingTicks = payload.remainingTicks();
         if (remainingTicks > combatTicks) {
             if (combatTicks == 0) {
                 beginCombat();
@@ -129,6 +136,14 @@ public final class ClientState {
 
     public static boolean isInCombat() {
         return combatTicks > 0;
+    }
+
+    public static int getPearlsLeft() {
+        return pearlsLeft;
+    }
+
+    public static int getCobwebsLeft() {
+        return cobwebsLeft;
     }
 
     public static int getCombatTicks() {
@@ -245,6 +260,8 @@ public final class ClientState {
         combatExitTicks = 0;
         pendingSound = null;
         pendingDelay = 0;
+        pearlsLeft = 0;
+        cobwebsLeft = 0;
     }
 
     public static int getHearts() {

@@ -4,6 +4,7 @@ import net.bananemdnsa.mchelden.client.ClientState;
 import net.bananemdnsa.mchelden.client.hud.CombatHud;
 import net.bananemdnsa.mchelden.client.hud.HeartHud;
 import net.bananemdnsa.mchelden.client.hud.HeartLossOverlay;
+import net.bananemdnsa.mchelden.client.hud.QuotaHud;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -27,6 +28,7 @@ public class MCHeldenClient {
     static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(VanillaGuiLayers.PLAYER_HEALTH, HeartHud.LAYER_ID, HeartHud::render);
         event.registerAbove(HeartHud.LAYER_ID, CombatHud.LAYER_ID, CombatHud::render);
+        event.registerAbove(VanillaGuiLayers.HOTBAR, QuotaHud.LAYER_ID, QuotaHud::render);
         event.registerAboveAll(HeartLossOverlay.LAYER_ID, HeartLossOverlay::render);
     }
 

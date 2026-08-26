@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.text.HeldenText;
 
 import net.minecraft.server.level.ServerPlayer;
@@ -65,12 +66,22 @@ public final class ItemQuota {
         }
 
         counters[kind.ordinal()]++;
+        NetworkHandler.sendCombat(player);
         return true;
     }
 
     public static int remaining(UUID uuid, Kind kind) {
         int[] counters = USED.get(uuid);
         return counters == null ? kind.limit() : Math.max(0, kind.limit() - counters[kind.ordinal()]);
+    }
+
+    /** Setzt alle Kontingente auf aufgebraucht. Zum Testen des leeren Zustands. */
+    public static void drain(ServerPlayer player) {
+        int[] counters = USED.computeIfAbsent(player.getUUID(), uuid -> new int[Kind.values().length]);
+        for (Kind kind : Kind.values()) {
+            counters[kind.ordinal()] = kind.limit();
+        }
+        NetworkHandler.sendCombat(player);
     }
 
     /** Beim Ende des Kampfes aufrufen. Das Kontingent gehört zum einzelnen Kampf. */

@@ -3,6 +3,8 @@ package net.bananemdnsa.mchelden.network;
 import java.util.UUID;
 
 import net.bananemdnsa.mchelden.MCHelden;
+import net.bananemdnsa.mchelden.combat.CombatTracker;
+import net.bananemdnsa.mchelden.combat.ItemQuota;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
@@ -32,9 +34,15 @@ public final class NetworkHandler {
                 NetworkHandler::handleCombatOnClient);
     }
 
-    /** Schickt den Stand des Combat-Timers. Nur bei Aenderungen, der Client zaehlt selbst. */
-    public static void sendCombat(ServerPlayer player, int remainingTicks) {
-        PacketDistributor.sendToPlayer(player, new CombatSyncPayload(remainingTicks));
+    /**
+     * Schickt Timer und Kontingente. Nur bei Aenderungen — den Timer zaehlt der Client selbst,
+     * und die Kontingente aendern sich nur, wenn tatsaechlich etwas verbraucht wird.
+     */
+    public static void sendCombat(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, new CombatSyncPayload(
+                CombatTracker.remainingTicks(player.getUUID()),
+                ItemQuota.remaining(player.getUUID(), ItemQuota.Kind.PEARL),
+                ItemQuota.remaining(player.getUUID(), ItemQuota.Kind.COBWEB)));
     }
 
     /** Startet beim Empfänger die Verlust-Animation. Beim Respawn schicken, nicht beim Tod. */
@@ -88,7 +96,7 @@ public final class NetworkHandler {
     }
 
     private static void handleCombatOnClient(CombatSyncPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onCombat(payload.remainingTicks()));
+        context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onCombat(payload));
     }
 
     public static String version() {

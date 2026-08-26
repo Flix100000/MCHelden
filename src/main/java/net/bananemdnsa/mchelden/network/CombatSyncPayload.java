@@ -15,8 +15,11 @@ import net.minecraft.resources.ResourceLocation;
  * Spielern vierhundert Pakete pro Sekunde für eine Zahl, die der Client ausrechnen kann.
  *
  * @param remainingTicks verbleibende Ticks, 0 bedeutet ausserhalb des Kampfes
+ * @param pearlsLeft verbleibende Enderperlen im Kontingent
+ * @param cobwebsLeft verbleibende Spinnweben im Kontingent
  */
-public record CombatSyncPayload(int remainingTicks) implements CustomPacketPayload {
+public record CombatSyncPayload(int remainingTicks, int pearlsLeft, int cobwebsLeft)
+        implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<CombatSyncPayload> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(MCHelden.MODID, "combat"));
@@ -24,6 +27,8 @@ public record CombatSyncPayload(int remainingTicks) implements CustomPacketPaylo
     public static final StreamCodec<RegistryFriendlyByteBuf, CombatSyncPayload> STREAM_CODEC =
             StreamCodec.composite(
                     ByteBufCodecs.VAR_INT, CombatSyncPayload::remainingTicks,
+                    ByteBufCodecs.VAR_INT, CombatSyncPayload::pearlsLeft,
+                    ByteBufCodecs.VAR_INT, CombatSyncPayload::cobwebsLeft,
                     CombatSyncPayload::new);
 
     @Override
