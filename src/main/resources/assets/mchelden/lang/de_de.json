@@ -39,5 +39,6 @@
   "mchelden.grave.just_now": "gerade eben",
   "mchelden.grave.minutes_ago": "vor %s Min",
   "mchelden.grave.owner": "Grab von %s",
-  "mchelden.grave.xp": "%s XP"
+  "mchelden.grave.xp": "%s XP",
+  "mchelden.grave.unknown": "Unbekanntes Grab"
 }

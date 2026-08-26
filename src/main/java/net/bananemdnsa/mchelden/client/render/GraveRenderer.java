@@ -9,6 +9,7 @@ import com.mojang.math.Axis;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.network.chat.Component;
@@ -49,6 +50,10 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
      */
     private static final int COLOR = 0xFF2A6BD0;
 
+    /** Welcher Anteil unten voll deckend bleibt, bevor das Ausgehen beginnt. */
+    private static final float SOLID_PORTION = 0.4f;
+    private static final int FADE_SEGMENTS = 7;
+
     private static final float BEAM_RADIUS = 0.10f;
     private static final float GLOW_RADIUS = 0.14f;
 
@@ -78,14 +83,55 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
 
         int height = heightFor(grave.getLevel().getGameTime() - grave.getDiedAt());
 
-        if (height > 0) {
-            BeaconRenderer.renderBeaconBeam(poseStack, bufferSource, BeaconRenderer.BEAM_LOCATION,
-                    partialTick, 1.0F, grave.getLevel().getGameTime(), 0, height, COLOR,
-                    BEAM_RADIUS, GLOW_RADIUS);
-        }
+        renderBeam(poseStack, bufferSource, partialTick, grave.getLevel().getGameTime(), height);
 
         renderHead(grave, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
         renderNameplate(grave, poseStack, bufferSource, packedLight);
+    }
+
+    /**
+     * Zeichnet den Strahl und lässt ihn nach oben hin ausgehen.
+     *
+     * <p>Minecrafts Strahl hört hart auf, wo er endet. Bei vierzehn Blöcken sieht das aus wie
+     * abgeschnitten. Er wird deswegen in Abschnitte zerlegt, die nach oben hin durchsichtiger
+     * werden — das untere Stück bleibt voll deckend, damit er am Grab kräftig bleibt.
+     */
+    private static void renderBeam(PoseStack poseStack, MultiBufferSource bufferSource,
+                                   float partialTick, long gameTime, int height) {
+        if (height <= 0) {
+            return;
+        }
+
+        int solid = Math.max(1, Math.round(height * SOLID_PORTION));
+        segment(poseStack, bufferSource, partialTick, gameTime, 0, solid, 255);
+
+        int fade = height - solid;
+        if (fade <= 0) {
+            return;
+        }
+
+        for (int step = 0; step < FADE_SEGMENTS; step++) {
+            int from = solid + Math.round(fade * step / (float) FADE_SEGMENTS);
+            int to = solid + Math.round(fade * (step + 1) / (float) FADE_SEGMENTS);
+            if (to <= from) {
+                continue;
+            }
+
+            float remaining = 1f - (step + 0.5f) / FADE_SEGMENTS;
+            segment(poseStack, bufferSource, partialTick, gameTime, from, to - from,
+                    Math.round(255 * remaining * remaining));
+        }
+    }
+
+    private static void segment(PoseStack poseStack, MultiBufferSource bufferSource,
+                                float partialTick, long gameTime, int yOffset, int height, int alpha) {
+        if (alpha <= 0) {
+            return;
+        }
+
+        int color = (alpha << 24) | (COLOR & 0x00FFFFFF);
+        BeaconRenderer.renderBeaconBeam(poseStack, bufferSource, BeaconRenderer.BEAM_LOCATION,
+                partialTick, 1.0F, gameTime, yOffset, height, color, BEAM_RADIUS, GLOW_RADIUS);
     }
 
     /** Der Kopf des Toten schwebt über dem Grabstein und wippt langsam auf und ab. */
@@ -122,12 +168,15 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
         Minecraft minecraft = Minecraft.getInstance();
         Vec3 cameraPos = minecraft.gameRenderer.getMainCamera().getPosition();
 
-        if (grave.getOwnerName().isEmpty()
-                || Vec3.atCenterOf(grave.getBlockPos()).distanceToSqr(cameraPos) > NAMEPLATE_RANGE_SQR) {
+        if (Vec3.atCenterOf(grave.getBlockPos()).distanceToSqr(cameraPos) > NAMEPLATE_RANGE_SQR) {
             return;
         }
 
-        Component name = Component.literal(grave.getOwnerName());
+        // Auch ohne Namen zeichnen: dann steht wenigstens die Zeit da, und man sieht am
+        // Ergebnis ob die Darstellung laeuft oder die Daten fehlen.
+        Component name = grave.getOwnerName().isEmpty()
+                ? Component.translatable("mchelden.grave.unknown")
+                : Component.literal(grave.getOwnerName());
         Component since = elapsedSince(grave);
 
         poseStack.pushPose();
@@ -135,8 +184,9 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
         poseStack.mulPose(minecraft.getEntityRenderDispatcher().cameraOrientation());
         poseStack.scale(-0.02f, -0.02f, 0.02f);
 
-        drawCentered(name, 0, 0xFFFFFFFF, poseStack, bufferSource, packedLight);
-        drawCentered(since, 10, 0xFFA0A0A0, poseStack, bufferSource, packedLight);
+        // Volle Helligkeit: sonst ist das Schild in einer dunklen Ecke kaum zu lesen.
+        drawCentered(name, 0, 0xFFFFFFFF, poseStack, bufferSource, LightTexture.FULL_BRIGHT);
+        drawCentered(since, 10, 0xFFC0C0C0, poseStack, bufferSource, LightTexture.FULL_BRIGHT);
         poseStack.popPose();
     }
 
