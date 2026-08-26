@@ -33,6 +33,9 @@ public final class ClientState {
      */
     private static int lossTicks;
 
+    /** Combat-Timer. Der Server schickt nur Aenderungen, heruntergezaehlt wird hier. */
+    private static int combatTicks;
+
     private ClientState() {
     }
 
@@ -50,7 +53,24 @@ public final class ClientState {
         lossTicks = LOSS_TOTAL_TICKS;
     }
 
+    /** Uebernimmt den Stand vom Server. 0 bedeutet: Kampf vorbei. */
+    public static void onCombat(int remainingTicks) {
+        combatTicks = remainingTicks;
+    }
+
+    public static boolean isInCombat() {
+        return combatTicks > 0;
+    }
+
+    public static int getCombatTicks() {
+        return combatTicks;
+    }
+
     public static void tick() {
+        if (combatTicks > 0) {
+            combatTicks--;
+        }
+
         if (lossTicks <= 0) {
             return;
         }
@@ -117,6 +137,7 @@ public final class ClientState {
         playtimeRemainingSeconds = PlayerState.DAILY_PLAYTIME_SECONDS;
         phase = Phase.AUFBAU;
         lossTicks = 0;
+        combatTicks = 0;
     }
 
     public static int getHearts() {

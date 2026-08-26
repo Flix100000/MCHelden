@@ -26,6 +26,15 @@ public final class NetworkHandler {
                 HeartLostPayload.TYPE,
                 HeartLostPayload.STREAM_CODEC,
                 NetworkHandler::handleHeartLostOnClient);
+        registrar.playToClient(
+                CombatSyncPayload.TYPE,
+                CombatSyncPayload.STREAM_CODEC,
+                NetworkHandler::handleCombatOnClient);
+    }
+
+    /** Schickt den Stand des Combat-Timers. Nur bei Aenderungen, der Client zaehlt selbst. */
+    public static void sendCombat(ServerPlayer player, int remainingTicks) {
+        PacketDistributor.sendToPlayer(player, new CombatSyncPayload(remainingTicks));
     }
 
     /** Startet beim Empfänger die Verlust-Animation. Beim Respawn schicken, nicht beim Tod. */
@@ -76,6 +85,10 @@ public final class NetworkHandler {
 
     private static void handleHeartLostOnClient(HeartLostPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onHeartLost(payload.remaining()));
+    }
+
+    private static void handleCombatOnClient(CombatSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onCombat(payload.remainingTicks()));
     }
 
     public static String version() {

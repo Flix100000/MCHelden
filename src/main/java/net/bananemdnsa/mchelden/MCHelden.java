@@ -2,6 +2,7 @@ package net.bananemdnsa.mchelden;
 
 import com.mojang.logging.LogUtils;
 
+import net.bananemdnsa.mchelden.combat.CombatEvents;
 import net.bananemdnsa.mchelden.command.HeldenCommand;
 import net.bananemdnsa.mchelden.hearts.HeartEvents;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
@@ -31,8 +32,11 @@ public class MCHelden {
 
         NeoForge.EVENT_BUS.addListener(this::registerCommands);
         NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
-        NeoForge.EVENT_BUS.addListener(HeartEvents::onLivingDeath);
         NeoForge.EVENT_BUS.addListener(HeartEvents::onRespawn);
+        NeoForge.EVENT_BUS.addListener(CombatEvents::onIncomingDamage);
+        NeoForge.EVENT_BUS.addListener(CombatEvents::onDeath);
+        NeoForge.EVENT_BUS.addListener(CombatEvents::onLogout);
+        NeoForge.EVENT_BUS.addListener(CombatEvents::onServerTick);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
