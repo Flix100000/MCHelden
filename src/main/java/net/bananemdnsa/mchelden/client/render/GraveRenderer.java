@@ -17,7 +17,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.client.renderer.blockentity.BeaconRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -50,6 +52,11 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
     private static final float BEAM_RADIUS = 0.10f;
     private static final float GLOW_RADIUS = 0.14f;
 
+    /** Schwebehoehe des Kopfes ueber dem Block, plus Ausschlag und Tempo des Wippens. */
+    private static final float HEAD_HEIGHT = 1.05f;
+    private static final float BOB_HEIGHT = 0.055f;
+    private static final float BOB_SPEED = 0.06f;
+
     /** Ab wieviel Bloecken Entfernung das Namensschild erscheint. */
     private static final double NAMEPLATE_RANGE = 12.0;
     private static final double NAMEPLATE_RANGE_SQR = NAMEPLATE_RANGE * NAMEPLATE_RANGE;
@@ -77,20 +84,23 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
                     BEAM_RADIUS, GLOW_RADIUS);
         }
 
-        renderHead(grave, poseStack, bufferSource, packedLight, packedOverlay);
+        renderHead(grave, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
         renderNameplate(grave, poseStack, bufferSource, packedLight);
     }
 
-    /** Der Kopf des Toten sitzt auf dem Grabstein. */
-    private void renderHead(GraveBlockEntity grave, PoseStack poseStack,
+    /** Der Kopf des Toten schwebt über dem Grabstein und wippt langsam auf und ab. */
+    private void renderHead(GraveBlockEntity grave, float partialTick, PoseStack poseStack,
                             MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
         ItemStack head = grave.getHeadStack();
-        if (head.isEmpty()) {
+        if (head.isEmpty() || grave.getLevel() == null) {
             return;
         }
 
+        float time = grave.getLevel().getGameTime() + partialTick;
+        float bob = Mth.sin(time * BOB_SPEED) * BOB_HEIGHT;
+
         poseStack.pushPose();
-        poseStack.translate(0.5, 0.64, 0.5);
+        poseStack.translate(0.5, HEAD_HEIGHT + bob, 0.5);
         poseStack.scale(0.62f, 0.62f, 0.62f);
         poseStack.mulPose(Axis.YP.rotationDegrees(
                 -grave.getBlockState().getValue(GraveBlock.FACING).toYRot()));
@@ -121,7 +131,7 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
         Component since = elapsedSince(grave);
 
         poseStack.pushPose();
-        poseStack.translate(0.5, 1.15, 0.5);
+        poseStack.translate(0.5, 1.62, 0.5);
         poseStack.mulPose(minecraft.getEntityRenderDispatcher().cameraOrientation());
         poseStack.scale(-0.02f, -0.02f, 0.02f);
 
@@ -158,6 +168,21 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
 
         float remaining = 1f - (progress - SHRINK_START) / (1f - SHRINK_START);
         return Mth.floor(MAX_HEIGHT * remaining);
+    }
+
+    /**
+     * Der Bereich, den die Sichtkulissenpruefung heranzieht.
+     *
+     * <p>NeoForge prueft die Kulisse auch bei Blockentities, die ausserhalb des Bildes
+     * gezeichnet werden sollen — anders als Vanilla. Ohne diese Erweiterung zaehlt nur der
+     * eine Block, und der vierzehn Bloecke hohe Strahl verschwindet, sobald der Grabstein
+     * selbst aus dem Bild faellt.
+     */
+    @Override
+    public AABB getRenderBoundingBox(GraveBlockEntity grave) {
+        BlockPos pos = grave.getBlockPos();
+        return new AABB(pos.getX(), pos.getY(), pos.getZ(),
+                pos.getX() + 1.0, pos.getY() + MAX_HEIGHT + 2.0, pos.getZ() + 1.0);
     }
 
     /** Der Strahl soll aus der Ferne sichtbar sein, sonst löst er kein Rennen aus. */

@@ -41,7 +41,8 @@ public class GraveScreen extends AbstractContainerScreen<GraveMenu> {
         super(menu, inventory, title);
         this.imageWidth = 176;
         this.imageHeight = 190;
-        this.inventoryLabelY = imageHeight - 94;
+        // Die Grabplaetze enden bei 97 — die Beschriftung muss darunter, nicht darauf.
+        this.inventoryLabelY = 100;
     }
 
     @Override
@@ -65,17 +66,18 @@ public class GraveScreen extends AbstractContainerScreen<GraveMenu> {
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         super.renderLabels(graphics, mouseX, mouseY);
 
-        int headX = PADDING;
-        int headY = HEADER_TOP + 2;
-        graphics.renderItem(head, headX, headY);
+        // Die Leiste geht von 18 bis 38. Zwei Zeilen zu neun Pixeln passen genau hinein,
+        // wenn sie bei 19 beginnen — tiefer haengt die zweite Zeile unten heraus.
+        int textTop = HEADER_TOP + 1;
+        graphics.renderItem(head, PADDING, HEADER_TOP + 2);
 
-        int textX = headX + HEAD_SIZE + 5;
+        int textX = PADDING + HEAD_SIZE + 5;
         graphics.drawString(font, Component.translatable("mchelden.grave.owner", menu.getOwnerName()),
-                textX, headY + 1, NAME_COLOR, false);
-        graphics.drawString(font, elapsedSince(), textX, headY + 11, SUBTLE_COLOR, false);
+                textX, textTop, NAME_COLOR, false);
+        graphics.drawString(font, elapsedSince(), textX, textTop + 10, SUBTLE_COLOR, false);
 
         Component xp = Component.translatable("mchelden.grave.xp", menu.getStoredXp());
-        graphics.drawString(font, xp, imageWidth - PADDING - font.width(xp), headY + 6, XP_COLOR, false);
+        graphics.drawString(font, xp, imageWidth - PADDING - font.width(xp), textTop + 5, XP_COLOR, false);
     }
 
     /** Wie lange der Tod her ist. Die Weltzeit kennt der Client, der Todeszeitpunkt kam mit. */
