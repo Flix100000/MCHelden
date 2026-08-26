@@ -18,8 +18,8 @@ import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ResolvableProfile;
@@ -77,8 +77,20 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
         }
     }
 
+    /**
+     * Oeffnet den eigenen Bildschirm und schickt die Kopfzeilen-Daten mit.
+     *
+     * <p>Name, XP und Todeszeitpunkt stehen nicht im Inventar und kaemen ohne diesen Umweg
+     * nie beim Client an.
+     */
     public void open(Player player) {
-        player.openMenu(this);
+        if (player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.openMenu(this, buffer -> {
+                buffer.writeUtf(ownerName);
+                buffer.writeVarInt(storedXp);
+                buffer.writeLong(diedAt);
+            });
+        }
     }
 
     @Nullable
@@ -167,7 +179,7 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
 
     @Override
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
-        return ChestMenu.threeRows(containerId, inventory, this);
+        return new GraveMenu(containerId, inventory, this, ownerName, storedXp, diedAt);
     }
 
     @Override

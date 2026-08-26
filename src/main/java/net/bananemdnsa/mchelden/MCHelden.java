@@ -9,6 +9,7 @@ import net.bananemdnsa.mchelden.combat.QuotaEvents;
 import net.bananemdnsa.mchelden.grave.GraveEvents;
 import net.bananemdnsa.mchelden.registry.MCHeldenBlockEntities;
 import net.bananemdnsa.mchelden.registry.MCHeldenBlocks;
+import net.bananemdnsa.mchelden.registry.MCHeldenMenus;
 import net.bananemdnsa.mchelden.command.HeldenCommand;
 import net.bananemdnsa.mchelden.hearts.HeartEvents;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
@@ -37,6 +38,7 @@ public class MCHelden {
     public MCHelden(IEventBus modEventBus, ModContainer modContainer) {
         MCHeldenBlocks.register(modEventBus);
         MCHeldenBlockEntities.register(modEventBus);
+        MCHeldenMenus.register(modEventBus);
 
         modEventBus.addListener(this::registerPayloads);
 

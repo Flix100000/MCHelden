@@ -37,5 +37,7 @@
   "block.mchelden.grave": "Grab",
   "mchelden.grave.title": "Grab von %s",
   "mchelden.grave.just_now": "gerade eben",
-  "mchelden.grave.minutes_ago": "vor %s Min"
+  "mchelden.grave.minutes_ago": "vor %s Min",
+  "mchelden.grave.owner": "Grab von %s",
+  "mchelden.grave.xp": "%s XP"
 }

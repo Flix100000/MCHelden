@@ -6,7 +6,9 @@ import net.bananemdnsa.mchelden.client.hud.HeartHud;
 import net.bananemdnsa.mchelden.client.hud.HeartLossOverlay;
 import net.bananemdnsa.mchelden.client.hud.QuotaHud;
 import net.bananemdnsa.mchelden.client.render.GraveRenderer;
+import net.bananemdnsa.mchelden.client.screen.GraveScreen;
 import net.bananemdnsa.mchelden.registry.MCHeldenBlockEntities;
+import net.bananemdnsa.mchelden.registry.MCHeldenMenus;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -24,6 +26,11 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 @EventBusSubscriber(modid = MCHelden.MODID, value = Dist.CLIENT)
 public class MCHeldenClient {
     public MCHeldenClient(ModContainer container) {
+    }
+
+    @SubscribeEvent
+    static void registerScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
+        event.register(MCHeldenMenus.GRAVE.get(), GraveScreen::new);
     }
 
     @SubscribeEvent

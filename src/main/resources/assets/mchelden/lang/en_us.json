@@ -37,5 +37,7 @@
   "block.mchelden.grave": "Grave",
   "mchelden.grave.title": "%s's grave",
   "mchelden.grave.just_now": "just now",
-  "mchelden.grave.minutes_ago": "%s min ago"
+  "mchelden.grave.minutes_ago": "%s min ago",
+  "mchelden.grave.owner": "%s's grave",
+  "mchelden.grave.xp": "%s XP"
 }
