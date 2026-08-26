@@ -11,6 +11,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
+import net.bananemdnsa.mchelden.combat.CombatTracker;
 import net.bananemdnsa.mchelden.hearts.Elimination;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
@@ -24,6 +25,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -64,7 +66,15 @@ public final class HeldenCommand {
                                                 context.getSource(),
                                                 GameProfileArgument.getGameProfiles(context, "spieler"),
                                                 IntegerArgumentType.getInteger(context, "herzen"))))))
+                .then(Commands.literal("combat")
+                        .then(Commands.literal("clear")
+                                .then(Commands.argument("spieler", EntityArgument.players())
+                                        .executes(context -> combatClear(
+                                                context.getSource(),
+                                                EntityArgument.getPlayers(context, "spieler"))))))
                 .then(Commands.literal("debug")
+                        .then(Commands.literal("combat")
+                                .executes(context -> debugCombat(context.getSource())))
                         .then(Commands.literal("death")
                                 .executes(context -> debugDeath(context.getSource())))
                         .then(Commands.literal("animation")
@@ -205,6 +215,29 @@ public final class HeldenCommand {
         NetworkHandler.sendHeartLost(player, HeartManager.get(source.getServer(), player.getUUID()));
 
         source.sendSuccess(() -> Component.literal("Effekt abgespielt — Herzstand unverändert")
+                .withStyle(ChatFormatting.GRAY), false);
+        return 1;
+    }
+
+    private static int combatClear(CommandSourceStack source, Collection<ServerPlayer> players) {
+        for (ServerPlayer player : players) {
+            CombatTracker.clear(player);
+            source.sendSuccess(() -> Component.literal(player.getGameProfile().getName()
+                    + " ist nicht mehr im Kampf").withStyle(ChatFormatting.GRAY), true);
+        }
+        return players.size();
+    }
+
+    /**
+     * Setzt einen Treffer auf sich selbst. Ohne das laesst sich das Combat-HUD allein gar
+     * nicht ansehen — dazu braeuchte es einen zweiten Spieler, der zuschlaegt.
+     */
+    private static int debugCombat(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        CombatTracker.extend(player, "Debug");
+
+        source.sendSuccess(() -> Component.literal("Treffer simuliert — Timer bei "
+                + CombatTracker.remainingTicks(player.getUUID()) / 20 + " Sekunden")
                 .withStyle(ChatFormatting.GRAY), false);
         return 1;
     }

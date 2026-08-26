@@ -35,6 +35,11 @@ public final class ClientState {
 
     /** Combat-Timer. Der Server schickt nur Aenderungen, heruntergezaehlt wird hier. */
     private static int combatTicks;
+    /** Laeuft kurz nach jedem Treffer, damit der Balken sichtbar aufleuchtet. */
+    private static int combatFlashTicks;
+
+    /** Dauer des Aufleuchtens nach einem Treffer. */
+    public static final int COMBAT_FLASH_TICKS = 7;
 
     private ClientState() {
     }
@@ -53,9 +58,25 @@ public final class ClientState {
         lossTicks = LOSS_TOTAL_TICKS;
     }
 
-    /** Uebernimmt den Stand vom Server. 0 bedeutet: Kampf vorbei. */
+    /**
+     * Uebernimmt den Stand vom Server. 0 bedeutet: Kampf vorbei.
+     *
+     * <p>Steigt der Wert, war es ein Treffer — der Balken leuchtet dann kurz auf. Faellt er
+     * auf null, ist der Kampf ausgelaufen und man darf wieder an Kisten und in die Safezone.
+     * Genau das braucht einen Ton, weil man es nach drei Minuten sonst nicht mitbekommt.
+     */
     public static void onCombat(int remainingTicks) {
+        if (remainingTicks > combatTicks) {
+            combatFlashTicks = COMBAT_FLASH_TICKS;
+        } else if (remainingTicks == 0 && combatTicks > 0) {
+            play(SoundEvents.NOTE_BLOCK_CHIME.value(), 0.6f, 1.5f);
+        }
         combatTicks = remainingTicks;
+    }
+
+    /** 1.0 direkt nach einem Treffer, 0.0 wenn das Aufleuchten vorbei ist. */
+    public static float combatFlash(float partialTick) {
+        return Mth.clamp(Math.max(0f, combatFlashTicks - partialTick) / COMBAT_FLASH_TICKS, 0f, 1f);
     }
 
     public static boolean isInCombat() {
@@ -69,6 +90,9 @@ public final class ClientState {
     public static void tick() {
         if (combatTicks > 0) {
             combatTicks--;
+        }
+        if (combatFlashTicks > 0) {
+            combatFlashTicks--;
         }
 
         if (lossTicks <= 0) {
@@ -138,6 +162,7 @@ public final class ClientState {
         phase = Phase.AUFBAU;
         lossTicks = 0;
         combatTicks = 0;
+        combatFlashTicks = 0;
     }
 
     public static int getHearts() {

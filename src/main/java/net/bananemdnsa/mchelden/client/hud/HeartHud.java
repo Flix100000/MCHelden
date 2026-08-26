@@ -34,8 +34,6 @@ public final class HeartHud {
 
     private static final int SPRITE = 9;
     private static final int SPACING = 11;
-    /** Abstand über dem unteren Bildschirmrand, oberhalb der Vanilla-Statusleisten. */
-    private static final int BOTTOM_OFFSET = 51;
     private static final float BOUNTY_SLOT_ALPHA = 0.35f;
 
     /** Kantenlänge eines Bruchstücks. Neun Pixel geteilt durch drei ergibt ein 3×3-Raster. */
@@ -67,9 +65,8 @@ public final class HeartHud {
         int hearts = ClientState.getHearts();
         int slots = PlayerState.MAX_HEARTS;
 
-        int rowWidth = (slots - 1) * SPACING + SPRITE;
-        int left = (graphics.guiWidth() - rowWidth) / 2;
-        int top = graphics.guiHeight() - BOTTOM_OFFSET;
+        int left = HudLayout.centered(graphics, (slots - 1) * SPACING + SPRITE);
+        int top = HudLayout.heartsTop(graphics);
 
         RenderSystem.enableBlend();
         for (int slot = 0; slot < slots; slot++) {
