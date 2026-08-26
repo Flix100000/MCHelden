@@ -20,6 +20,9 @@ import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
@@ -81,8 +84,24 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
         setChanged();
         if (level instanceof ServerLevel serverLevel) {
             nameplateId = GraveNameplate.spawn(serverLevel, worldPosition, ownerName);
+
+            // Ein Grab, das in der Naehe entsteht, soll man hoeren: dann weiss man dass
+            // nebenan jemand gefallen ist, auch wenn man den Strahl gerade nicht sieht.
+            play(serverLevel, SoundEvents.RESPAWN_ANCHOR_DEPLETE.value(), 1.1f, 0.6f);
+            play(serverLevel, SoundEvents.SOUL_ESCAPE.value(), 0.9f, 0.7f);
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_ALL);
         }
+    }
+
+    /** Schliessgeraeusch, wenn jemand das Grab wieder zumacht. */
+    public void playCloseSound() {
+        if (level instanceof ServerLevel serverLevel) {
+            play(serverLevel, SoundEvents.CHEST_CLOSE, 0.6f, 0.55f);
+        }
+    }
+
+    private void play(ServerLevel level, SoundEvent sound, float volume, float pitch) {
+        level.playSound(null, worldPosition, sound, SoundSource.BLOCKS, volume, pitch);
     }
 
     /** Räumt das Namensschild ab. Beim Entfernen des Grabes aufrufen, egal auf welchem Weg. */
@@ -100,6 +119,11 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
      * nie beim Client an.
      */
     public void open(Player player) {
+        if (level instanceof ServerLevel serverLevel) {
+            play(serverLevel, SoundEvents.CHEST_OPEN, 0.7f, 0.55f);
+            play(serverLevel, SoundEvents.SOUL_ESCAPE.value(), 0.4f, 1.1f);
+        }
+
         if (player instanceof ServerPlayer serverPlayer) {
             serverPlayer.openMenu(this, buffer -> {
                 buffer.writeUtf(ownerName);

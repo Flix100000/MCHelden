@@ -135,5 +135,9 @@ public class GraveMenu extends AbstractContainerMenu {
     public void removed(Player player) {
         super.removed(player);
         container.stopOpen(player);
+
+        if (container instanceof GraveBlockEntity grave) {
+            grave.playCloseSound();
+        }
     }
 }

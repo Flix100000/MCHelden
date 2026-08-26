@@ -18,13 +18,17 @@ public final class MCHeldenBlocks {
      * Das Grab.
      *
      * <p>Bewusst ohne zugehöriges Item: es soll nur durch Sterben entstehen, nicht craftbar
-     * oder aufsammelbar sein. Unzerstörbar und kolbenfest, damit niemand fremde Beute
-     * verschwinden lassen kann, ohne sie zu nehmen.
+     * oder aufsammelbar sein.
+     *
+     * <p>Abbaubar wie Erde, aber explosionsfest und kolbenfest. Das Abbauen ist harmlos, weil
+     * dabei alles herausfällt — es ist nur ein schnellerer Weg an dieselbe Beute. Explosionen
+     * und Kolben bleiben ausgeschlossen, damit ein Creeper nicht fremden Nachlass über die
+     * halbe Landschaft verteilt.
      */
     public static final DeferredBlock<GraveBlock> GRAVE = BLOCKS.register("grave",
             () -> new GraveBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.DEEPSLATE)
-                    .strength(-1.0F, 3600000.0F)
+                    .strength(0.5F, 1200.0F)
                     .sound(SoundType.DEEPSLATE)
                     .noOcclusion()
                     .pushReaction(PushReaction.BLOCK)));
