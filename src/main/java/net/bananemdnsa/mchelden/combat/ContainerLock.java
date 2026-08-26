@@ -1,5 +1,6 @@
 package net.bananemdnsa.mchelden.combat;
 
+import net.bananemdnsa.mchelden.registry.MCHeldenBlocks;
 import net.bananemdnsa.mchelden.text.HeldenText;
 
 import net.minecraft.server.level.ServerPlayer;
@@ -22,8 +23,9 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
  * <p>Das eigene Inventar braucht keine Ausnahme: es wird über eine Taste geöffnet und läuft
  * gar nicht erst durch diese Ereignisse.
  *
- * <p>Noch nicht abgedeckt: das Grab, das in Etappe 4 entsteht und laut Spec im Kampf offen
- * bleiben soll. Sobald der Block existiert, kommt hier eine Ausnahme dazu.
+ * <p>Gräber sind ausgenommen. Der Timer läuft nach einem Kill bis zu drei Minuten weiter,
+ * und wer seine eigene Beute nicht anfassen darf, während jeder Dritte sie mitnehmen kann,
+ * wird um den Sieg betrogen.
  */
 public final class ContainerLock {
     private ContainerLock() {
@@ -37,7 +39,8 @@ public final class ContainerLock {
         }
 
         BlockState state = event.getLevel().getBlockState(event.getPos());
-        if (state.getMenuProvider(event.getLevel(), event.getPos()) == null) {
+        if (state.getMenuProvider(event.getLevel(), event.getPos()) == null
+                || state.is(MCHeldenBlocks.GRAVE.get())) {
             return;
         }
 

@@ -33,5 +33,7 @@
   "mchelden.combat.quota.pearl": "Enderperlen",
   "mchelden.combat.quota.cobweb": "Spinnweben",
   "mchelden.death.logout": "%s hat sich im Kampf gegen %s ausgeloggt",
-  "mchelden.death.logout.generic": "%s hat sich im Kampf ausgeloggt"
+  "mchelden.death.logout.generic": "%s hat sich im Kampf ausgeloggt",
+  "block.mchelden.grave": "Grab",
+  "mchelden.grave.title": "Grab von %s"
 }

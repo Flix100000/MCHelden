@@ -1,0 +1,75 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "stone": "minecraft:block/polished_deepslate",
+    "base": "minecraft:block/deepslate_tiles",
+    "particle": "minecraft:block/polished_deepslate"
+  },
+  "elements": [
+    {
+      "from": [
+        3,
+        0,
+        3
+      ],
+      "to": [
+        13,
+        3,
+        13
+      ],
+      "faces": {
+        "down": {
+          "texture": "#base",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#base"
+        },
+        "north": {
+          "texture": "#base"
+        },
+        "south": {
+          "texture": "#base"
+        },
+        "west": {
+          "texture": "#base"
+        },
+        "east": {
+          "texture": "#base"
+        }
+      }
+    },
+    {
+      "from": [
+        4,
+        3,
+        6
+      ],
+      "to": [
+        12,
+        9,
+        10
+      ],
+      "faces": {
+        "down": {
+          "texture": "#stone"
+        },
+        "up": {
+          "texture": "#stone"
+        },
+        "north": {
+          "texture": "#stone"
+        },
+        "south": {
+          "texture": "#stone"
+        },
+        "west": {
+          "texture": "#stone"
+        },
+        "east": {
+          "texture": "#stone"
+        }
+      }
+    }
+  ]
+}

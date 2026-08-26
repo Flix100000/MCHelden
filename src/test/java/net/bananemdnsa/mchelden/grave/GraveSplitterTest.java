@@ -129,10 +129,10 @@ class GraveSplitterTest {
     }
 
     @Test
-    void xpWirdHaelftigGeteiltMitRestFuersGrab() {
-        assertEquals(50, GraveSplitter.keepFromXp(100));
-        assertEquals(16, GraveSplitter.keepFromXp(33));
-        assertEquals(0, GraveSplitter.keepFromXp(1));
-        assertEquals(0, GraveSplitter.keepFromXp(0));
+    void xpGehtZurHaelfteInsGrabMitRestFuersGrab() {
+        assertEquals(50, GraveSplitter.xpToGrave(100));
+        assertEquals(17, GraveSplitter.xpToGrave(33));
+        assertEquals(1, GraveSplitter.xpToGrave(1));
+        assertEquals(0, GraveSplitter.xpToGrave(0));
     }
 }

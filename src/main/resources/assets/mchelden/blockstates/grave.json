@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "mchelden:block/grave"
+    },
+    "facing=east": {
+      "model": "mchelden:block/grave",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "mchelden:block/grave",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "mchelden:block/grave",
+      "y": 270
+    }
+  }
+}

@@ -6,6 +6,9 @@ import net.bananemdnsa.mchelden.combat.CombatEvents;
 import net.bananemdnsa.mchelden.combat.CombatLogout;
 import net.bananemdnsa.mchelden.combat.ContainerLock;
 import net.bananemdnsa.mchelden.combat.QuotaEvents;
+import net.bananemdnsa.mchelden.grave.GraveEvents;
+import net.bananemdnsa.mchelden.registry.MCHeldenBlockEntities;
+import net.bananemdnsa.mchelden.registry.MCHeldenBlocks;
 import net.bananemdnsa.mchelden.command.HeldenCommand;
 import net.bananemdnsa.mchelden.hearts.HeartEvents;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
@@ -32,6 +35,9 @@ public class MCHelden {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public MCHelden(IEventBus modEventBus, ModContainer modContainer) {
+        MCHeldenBlocks.register(modEventBus);
+        MCHeldenBlockEntities.register(modEventBus);
+
         modEventBus.addListener(this::registerPayloads);
 
         NeoForge.EVENT_BUS.addListener(this::registerCommands);
@@ -46,6 +52,8 @@ public class MCHelden {
         NeoForge.EVENT_BUS.addListener(QuotaEvents::onEntityJoin);
         NeoForge.EVENT_BUS.addListener(QuotaEvents::onBlockPlace);
         NeoForge.EVENT_BUS.addListener(QuotaEvents::onRightClickBlock);
+        NeoForge.EVENT_BUS.addListener(GraveEvents::onDeath);
+        NeoForge.EVENT_BUS.addListener(GraveEvents::onRespawn);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {

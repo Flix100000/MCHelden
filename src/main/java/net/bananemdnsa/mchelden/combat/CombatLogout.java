@@ -5,10 +5,15 @@ import net.bananemdnsa.mchelden.text.HeldenText;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 
+import java.util.List;
+
+import net.bananemdnsa.mchelden.grave.GraveEvents;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Ausloggen mit laufendem Combat-Timer.
@@ -40,9 +45,18 @@ public final class CombatLogout {
 
         announce(server, player, opponent);
 
-        // Die Beute muss hier fallen, nicht beim Wiederkommen: sonst haette der Fluechtende
-        // seine Sachen noch, und der Gegner ginge leer aus.
-        player.getInventory().dropAll();
+        // Das Grab muss hier entstehen, nicht beim Wiederkommen: sonst haette der Fluechtende
+        // seine Sachen noch, und der Gegner ginge leer aus. Ausloggen waere sonst die
+        // guenstigere Art zu sterben.
+        if (player.level() instanceof ServerLevel level) {
+            List<ItemStack> keep = GraveEvents.bury(player, level,
+                    GraveEvents.wornArmor(player), GraveEvents.carriedItems(player));
+
+            // Die behaltene Haelfte kommt direkt zurueck ins Inventar statt in eine
+            // Zwischenablage: sie wird beim Ausloggen mitgespeichert und ueberlebt damit
+            // auch einen Serverneustart.
+            keep.forEach(stack -> player.getInventory().add(stack));
+        }
 
         PlayerStateStore store = PlayerStateStore.get(server);
         store.getOrCreate(player.getUUID()).setPendingRespawn(true);

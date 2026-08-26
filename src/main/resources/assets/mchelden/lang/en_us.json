@@ -33,5 +33,7 @@
   "mchelden.combat.quota.pearl": "Ender pearls",
   "mchelden.combat.quota.cobweb": "Cobwebs",
   "mchelden.death.logout": "%s logged out fighting %s",
-  "mchelden.death.logout.generic": "%s logged out during a fight"
+  "mchelden.death.logout.generic": "%s logged out during a fight",
+  "block.mchelden.grave": "Grave",
+  "mchelden.grave.title": "%s's grave"
 }

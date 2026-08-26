@@ -53,9 +53,14 @@ public final class GraveSplitter {
         return new Split(keep, grave);
     }
 
-    /** Die Hälfte der Anzahl bleibt beim Spieler, der Rest geht ins Grab. */
-    public static int keepFromXp(int totalXp) {
-        return totalXp / 2;
+    /**
+     * Der Anteil der XP, der ins Grab wandert. Der Rest ist ersatzlos weg.
+     *
+     * <p>Der Spieler behaelt nichts — er respawnt grundsaetzlich auf null. Bei ungerader
+     * Zahl bekommt das Grab das uebrige Stueck, wie bei den Items auch.
+     */
+    public static int xpToGrave(int totalXp) {
+        return totalXp - totalXp / 2;
     }
 
     /**
