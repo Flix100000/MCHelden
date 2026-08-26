@@ -2,9 +2,18 @@ package net.bananemdnsa.mchelden.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 
+import net.bananemdnsa.mchelden.grave.GraveBlock;
 import net.bananemdnsa.mchelden.grave.GraveBlockEntity;
 
+import com.mojang.math.Axis;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.ItemRenderer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.client.renderer.blockentity.BeaconRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -36,7 +45,16 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
     private static final float BEAM_RADIUS = 0.10f;
     private static final float GLOW_RADIUS = 0.14f;
 
+    /** Ab wieviel Bloecken Entfernung das Namensschild erscheint. */
+    private static final double NAMEPLATE_RANGE = 12.0;
+    private static final double NAMEPLATE_RANGE_SQR = NAMEPLATE_RANGE * NAMEPLATE_RANGE;
+
+    private final Font font;
+    private final ItemRenderer itemRenderer;
+
     public GraveRenderer(BlockEntityRendererProvider.Context context) {
+        this.font = context.getFont();
+        this.itemRenderer = Minecraft.getInstance().getItemRenderer();
     }
 
     @Override
@@ -46,15 +64,81 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
             return;
         }
 
-        long age = grave.getLevel().getGameTime() - grave.getDiedAt();
-        int height = heightFor(age);
-        if (height <= 0) {
+        int height = heightFor(grave.getLevel().getGameTime() - grave.getDiedAt());
+
+        if (height > 0) {
+            BeaconRenderer.renderBeaconBeam(poseStack, bufferSource, BeaconRenderer.BEAM_LOCATION,
+                    partialTick, 1.0F, grave.getLevel().getGameTime(), 1, height, COLOR,
+                    BEAM_RADIUS, GLOW_RADIUS);
+        }
+
+        renderHead(grave, poseStack, bufferSource, packedLight, packedOverlay);
+        renderNameplate(grave, poseStack, bufferSource, packedLight);
+    }
+
+    /** Der Kopf des Toten sitzt auf dem Grabstein. */
+    private void renderHead(GraveBlockEntity grave, PoseStack poseStack,
+                            MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+        ItemStack head = grave.getHeadStack();
+        if (head.isEmpty()) {
             return;
         }
 
-        BeaconRenderer.renderBeaconBeam(poseStack, bufferSource, BeaconRenderer.BEAM_LOCATION,
-                partialTick, 1.0F, grave.getLevel().getGameTime(), 1, height, COLOR,
-                BEAM_RADIUS, GLOW_RADIUS);
+        poseStack.pushPose();
+        poseStack.translate(0.5, 0.56, 0.5);
+        poseStack.scale(0.62f, 0.62f, 0.62f);
+        poseStack.mulPose(Axis.YP.rotationDegrees(
+                -grave.getBlockState().getValue(GraveBlock.FACING).toYRot()));
+
+        itemRenderer.renderStatic(head, ItemDisplayContext.FIXED, packedLight, packedOverlay,
+                poseStack, bufferSource, grave.getLevel(), 0);
+        poseStack.popPose();
+    }
+
+    /**
+     * Name und Todeszeitpunkt, nur aus der Naehe.
+     *
+     * <p>Dauerhaft sichtbare Schilder ueber jedem Grab wuerden die Landschaft zupflastern.
+     * Wer davorsteht, will wissen wessen Grab es ist; wer zweihundert Bloecke weg steht,
+     * braucht die Information nicht.
+     */
+    private void renderNameplate(GraveBlockEntity grave, PoseStack poseStack,
+                                 MultiBufferSource bufferSource, int packedLight) {
+        Minecraft minecraft = Minecraft.getInstance();
+        Vec3 cameraPos = minecraft.gameRenderer.getMainCamera().getPosition();
+
+        if (grave.getOwnerName().isEmpty()
+                || Vec3.atCenterOf(grave.getBlockPos()).distanceToSqr(cameraPos) > NAMEPLATE_RANGE_SQR) {
+            return;
+        }
+
+        Component name = Component.literal(grave.getOwnerName());
+        Component since = elapsedSince(grave);
+
+        poseStack.pushPose();
+        poseStack.translate(0.5, 1.15, 0.5);
+        poseStack.mulPose(minecraft.getEntityRenderDispatcher().cameraOrientation());
+        poseStack.scale(-0.02f, -0.02f, 0.02f);
+
+        drawCentered(name, 0, 0xFFFFFFFF, poseStack, bufferSource, packedLight);
+        drawCentered(since, 10, 0xFFA0A0A0, poseStack, bufferSource, packedLight);
+        poseStack.popPose();
+    }
+
+    private void drawCentered(Component text, int y, int color, PoseStack poseStack,
+                              MultiBufferSource bufferSource, int packedLight) {
+        font.drawInBatch(text, -font.width(text) / 2f, y, color, false,
+                poseStack.last().pose(), bufferSource, Font.DisplayMode.NORMAL, 0x40000000, packedLight);
+    }
+
+    /** Wie lange der Tod her ist, in ganzen Minuten. */
+    private static Component elapsedSince(GraveBlockEntity grave) {
+        long ticks = grave.getLevel() == null ? 0 : grave.getLevel().getGameTime() - grave.getDiedAt();
+        int minutes = (int) Math.max(0, ticks / (20 * 60));
+
+        return minutes < 1
+                ? Component.translatable("mchelden.grave.just_now")
+                : Component.translatable("mchelden.grave.minutes_ago", minutes);
     }
 
     private static int heightFor(long age) {

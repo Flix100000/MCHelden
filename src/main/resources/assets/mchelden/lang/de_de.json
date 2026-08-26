@@ -35,5 +35,7 @@
   "mchelden.death.logout": "%s hat sich im Kampf gegen %s ausgeloggt",
   "mchelden.death.logout.generic": "%s hat sich im Kampf ausgeloggt",
   "block.mchelden.grave": "Grab",
-  "mchelden.grave.title": "Grab von %s"
+  "mchelden.grave.title": "Grab von %s",
+  "mchelden.grave.just_now": "gerade eben",
+  "mchelden.grave.minutes_ago": "vor %s Min"
 }

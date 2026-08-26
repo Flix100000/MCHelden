@@ -35,5 +35,7 @@
   "mchelden.death.logout": "%s logged out fighting %s",
   "mchelden.death.logout.generic": "%s logged out during a fight",
   "block.mchelden.grave": "Grave",
-  "mchelden.grave.title": "%s's grave"
+  "mchelden.grave.title": "%s's grave",
+  "mchelden.grave.just_now": "just now",
+  "mchelden.grave.minutes_ago": "%s min ago"
 }
