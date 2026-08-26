@@ -45,6 +45,7 @@ public class MCHelden {
         NeoForge.EVENT_BUS.addListener(ContainerLock::onEntityInteract);
         NeoForge.EVENT_BUS.addListener(QuotaEvents::onEntityJoin);
         NeoForge.EVENT_BUS.addListener(QuotaEvents::onBlockPlace);
+        NeoForge.EVENT_BUS.addListener(QuotaEvents::onRightClickBlock);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {

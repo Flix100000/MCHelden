@@ -50,24 +50,48 @@ public final class ItemQuota {
     }
 
     /**
-     * Bucht einen Verbrauch, sofern noch etwas übrig ist.
+     * Prüft, ob noch etwas übrig ist, ohne zu buchen.
      *
-     * @return false, wenn das Kontingent erschöpft ist — dann darf der Vorgang nicht stattfinden
+     * <p>Ausserhalb des Kampfes immer true — das Kontingent gilt nur im Kampf.
      */
-    public static boolean tryUse(ServerPlayer player, Kind kind) {
+    public static boolean hasLeft(ServerPlayer player, Kind kind) {
         if (!CombatTracker.isInCombat(player.getUUID())) {
             return true;
         }
 
+        int[] counters = USED.get(player.getUUID());
+        return counters == null || counters[kind.ordinal()] < kind.limit();
+    }
+
+    /** Bucht einen Verbrauch. Ausserhalb des Kampfes passiert nichts. */
+    public static void consume(ServerPlayer player, Kind kind) {
+        if (!CombatTracker.isInCombat(player.getUUID())) {
+            return;
+        }
+
         int[] counters = USED.computeIfAbsent(player.getUUID(), uuid -> new int[Kind.values().length]);
-        if (counters[kind.ordinal()] >= kind.limit()) {
+        counters[kind.ordinal()] = Math.min(kind.limit(), counters[kind.ordinal()] + 1);
+        NetworkHandler.sendCombat(player);
+    }
+
+    /**
+     * Prüft und bucht in einem Schritt.
+     *
+     * @return false, wenn das Kontingent erschöpft ist — dann darf der Vorgang nicht stattfinden
+     */
+    public static boolean tryUse(ServerPlayer player, Kind kind) {
+        if (!hasLeft(player, kind)) {
             deny(player, kind);
             return false;
         }
 
-        counters[kind.ordinal()]++;
-        NetworkHandler.sendCombat(player);
+        consume(player, kind);
         return true;
+    }
+
+    /** Meldet dem Spieler, dass nichts mehr übrig ist. */
+    public static void refuse(ServerPlayer player, Kind kind) {
+        deny(player, kind);
     }
 
     public static int remaining(UUID uuid, Kind kind) {

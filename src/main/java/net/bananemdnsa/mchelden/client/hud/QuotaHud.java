@@ -9,10 +9,13 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Items;
+import net.neoforged.neoforge.client.event.ScreenEvent;
 
 /**
  * Die Kontingente oben rechts, plus die rote Plane über aufgebrauchten Hotbar-Items.
@@ -113,5 +116,44 @@ public final class QuotaHud {
 
     private static boolean carries(LocalPlayer player, ItemStack icon) {
         return player.getInventory().contains(icon);
+    }
+
+    /**
+     * Markiert aufgebrauchte Items auch in offenen Bildschirmen.
+     *
+     * <p>Nötig, weil Minecraft das gesamte HUD ausblendet sobald ein Bildschirm offen ist —
+     * die Markierung auf der Hotbar verschwindet damit genau dann, wenn man sein Inventar
+     * durchsieht und die Information am ehesten braucht.
+     */
+    public static void onScreenRender(ScreenEvent.Render.Post event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || !ClientState.isInCombat()
+                || !(event.getScreen() instanceof AbstractContainerScreen<?> screen)) {
+            return;
+        }
+
+        boolean pearlsSpent = ClientState.getPearlsLeft() <= 0;
+        boolean cobwebsSpent = ClientState.getCobwebsLeft() <= 0;
+        if (!pearlsSpent && !cobwebsSpent) {
+            return;
+        }
+
+        GuiGraphics graphics = event.getGuiGraphics();
+        RenderSystem.enableBlend();
+
+        for (Slot slot : screen.getMenu().slots) {
+            ItemStack stack = slot.getItem();
+            boolean spent = (pearlsSpent && stack.is(Items.ENDER_PEARL))
+                    || (cobwebsSpent && stack.is(Items.COBWEB));
+            if (!spent) {
+                continue;
+            }
+
+            int x = screen.getGuiLeft() + slot.x;
+            int y = screen.getGuiTop() + slot.y;
+            graphics.fill(x, y, x + ICON, y + ICON, SPENT_OVERLAY);
+        }
+
+        RenderSystem.disableBlend();
     }
 }

@@ -6,6 +6,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 
 public final class QuotaEvents {
@@ -34,15 +35,35 @@ public final class QuotaEvents {
         refund(player, Items.ENDER_PEARL.getDefaultInstance());
     }
 
-    /** Platzierte Spinnweben zählen als verbraucht, auch wenn man sie wieder abbaut. */
-    public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
+    /**
+     * Verhindert das Platzieren, wenn das Kontingent leer ist.
+     *
+     * <p>Blockiert wird am Rechtsklick, nicht am Platzieren-Ereignis: dieses feuert erst,
+     * wenn der Block schon gesetzt ist, und der Abbruch muss ihn nachtraeglich wieder
+     * entfernen — was nicht zuverlaessig greift. Am Rechtsklick entsteht er gar nicht erst,
+     * und das Item bleibt im Inventar.
+     */
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         if (!(event.getEntity() instanceof ServerPlayer player)
-                || !event.getPlacedBlock().is(Blocks.COBWEB)) {
+                || !event.getItemStack().is(Items.COBWEB)
+                || ItemQuota.hasLeft(player, ItemQuota.Kind.COBWEB)) {
             return;
         }
 
-        if (!ItemQuota.tryUse(player, ItemQuota.Kind.COBWEB)) {
-            event.setCanceled(true);
+        event.setCanceled(true);
+        ItemQuota.refuse(player, ItemQuota.Kind.COBWEB);
+    }
+
+    /**
+     * Zaehlt tatsaechlich platzierte Spinnweben.
+     *
+     * <p>Gezaehlt wird hier statt am Rechtsklick, weil nicht jeder Rechtsklick auch etwas
+     * platziert — sonst wuerde ein Klick gegen eine Wand mitzaehlen.
+     */
+    public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player
+                && event.getPlacedBlock().is(Blocks.COBWEB)) {
+            ItemQuota.consume(player, ItemQuota.Kind.COBWEB);
         }
     }
 

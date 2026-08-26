@@ -33,6 +33,11 @@ public class MCHeldenClient {
     }
 
     @SubscribeEvent
+    static void onScreenRender(net.neoforged.neoforge.client.event.ScreenEvent.Render.Post event) {
+        QuotaHud.onScreenRender(event);
+    }
+
+    @SubscribeEvent
     static void onClientTick(ClientTickEvent.Post event) {
         ClientState.tick();
     }
