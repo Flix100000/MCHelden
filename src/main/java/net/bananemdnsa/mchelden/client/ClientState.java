@@ -8,6 +8,7 @@ import javax.annotation.Nullable;
 
 import net.bananemdnsa.mchelden.network.BountyRollPayload;
 import net.bananemdnsa.mchelden.network.StateSyncPayload;
+import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.PlayerState;
 
@@ -37,7 +38,15 @@ public final class ClientState {
     private static UUID bountyTargetId;
     private static boolean bountyResolved;
     private static boolean bountyTargetEliminated;
-    private static int playtimeRemainingSeconds = PlayerState.DAILY_PLAYTIME_SECONDS;
+    /**
+     * Verbleibende Spielzeit, oder {@link PlaytimeTracker#NO_LIMIT}.
+     *
+     * <p>Der Server schickt nur Aenderungen, heruntergezaehlt wird hier — genau wie beim
+     * Combat-Timer. Ein Paket pro Sekunde und Spieler waere fuer eine Anzeige zu viel.
+     */
+    private static int playtimeRemainingSeconds = PlaytimeTracker.NO_LIMIT;
+    /** Der Client tickt zwanzigmal pro Sekunde, die Uhr laeuft aber in Sekunden. */
+    private static int playtimeTicks;
     private static Phase phase = Phase.AUFBAU;
 
     /** Wie lange der Rahmen des Kastens aufleuchtet, wenn ein Ziel ankommt. */
@@ -96,6 +105,7 @@ public final class ClientState {
         bountyResolved = payload.bounty().resolved();
         bountyTargetEliminated = payload.bounty().targetEliminated();
         playtimeRemainingSeconds = payload.playtimeRemainingSeconds();
+        playtimeTicks = 0;
         phase = Phase.byId(payload.phaseId());
 
         noteBountyChange(hadTarget, wasGone);
@@ -141,6 +151,16 @@ public final class ClientState {
      */
     public static void onBountyRoll(BountyRollPayload payload) {
         BountyRoll.start(payload);
+    }
+
+    /** Laesst die Uhr oben rechts laufen, ohne dass der Server jede Sekunde etwas schickt. */
+    private static void tickPlaytime() {
+        if (playtimeRemainingSeconds <= 0 || ++playtimeTicks < 20) {
+            return;
+        }
+
+        playtimeTicks = 0;
+        playtimeRemainingSeconds--;
     }
 
     /** Startet Halten und Zerspringen. Das verlorene Herz bleibt so lange sichtbar. */
@@ -255,6 +275,8 @@ public final class ClientState {
             combatExitTicks--;
         }
 
+        tickPlaytime();
+
         boolean wasRolling = BountyRoll.isRunning();
         BountyRoll.tick();
         if (wasRolling && !BountyRoll.isRunning()) {
@@ -348,7 +370,8 @@ public final class ClientState {
         bountyAppearTicks = 0;
         bountyGoneTicks = 0;
         bountyCloseTicks = 0;
-        playtimeRemainingSeconds = PlayerState.DAILY_PLAYTIME_SECONDS;
+        playtimeRemainingSeconds = PlaytimeTracker.NO_LIMIT;
+        playtimeTicks = 0;
         phase = Phase.AUFBAU;
         lossTicks = 0;
         combatTicks = 0;
@@ -407,6 +430,11 @@ public final class ClientState {
 
     public static boolean isBountyClosing() {
         return bountyCloseTicks > 0;
+    }
+
+    /** Gilt fuer diesen Spieler ueberhaupt ein Limit? Ops und der Krieg kennen keins. */
+    public static boolean hasPlaytimeLimit() {
+        return playtimeRemainingSeconds != PlaytimeTracker.NO_LIMIT;
     }
 
     public static int getPlaytimeRemainingSeconds() {

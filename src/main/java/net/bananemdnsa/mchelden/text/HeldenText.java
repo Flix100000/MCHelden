@@ -1,6 +1,8 @@
 package net.bananemdnsa.mchelden.text;
 
 import net.minecraft.ChatFormatting;
+import net.bananemdnsa.mchelden.state.Phase;
+
 import net.minecraft.network.chat.Component;
 
 /**
@@ -16,6 +18,11 @@ public final class HeldenText {
         return Component.translatable("mchelden.elimination.kick.title").withStyle(ChatFormatting.RED)
                 .append(Component.literal("\n\n"))
                 .append(Component.translatable("mchelden.elimination.kick.body").withStyle(ChatFormatting.GRAY));
+    }
+
+    /** Im Einzelspieler wird nicht gekickt, sondern zugesehen. */
+    public static Component eliminationSpectator() {
+        return Component.translatable("mchelden.elimination.spectator").withStyle(ChatFormatting.RED);
     }
 
     public static Component eliminationTitle(String victim) {
@@ -158,5 +165,102 @@ public final class HeldenText {
 
     public static Component bountyDebugSolo() {
         return Component.translatable("mchelden.command.bounty.debug.solo").withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component phaseCountdown(int seconds) {
+        return Component.translatable("mchelden.phase.countdown", seconds).withStyle(ChatFormatting.GOLD);
+    }
+
+    public static Component phaseCountdownSubtitle(Component phase) {
+        return Component.translatable("mchelden.phase.countdown.subtitle", phase)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component phaseTitle(Component phase) {
+        return phase.copy().withStyle(ChatFormatting.GOLD);
+    }
+
+    /** Was sich mit dieser Phase konkret aendert. Eine Zeile je Phase. */
+    public static Component phaseSubtitle(Phase phase) {
+        return Component.translatable("mchelden.phase.subtitle." + phase.getId())
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component phaseChanged(Component phase) {
+        return Component.translatable("mchelden.phase.changed", phase).withStyle(ChatFormatting.GOLD);
+    }
+
+    public static Component phaseReverted(Component phase) {
+        return Component.translatable("mchelden.phase.reverted", phase).withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component phaseNoNext() {
+        return Component.translatable("mchelden.command.phase.no_next").withStyle(ChatFormatting.RED);
+    }
+
+    public static Component phaseStarting(Component phase) {
+        return Component.translatable("mchelden.command.phase.starting", phase)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component playtimeWarning(int minutes) {
+        return Component.translatable("mchelden.playtime.warning", minutes)
+                .withStyle(minutes <= 1 ? ChatFormatting.RED : ChatFormatting.GOLD);
+    }
+
+    /** Muss sagen, dass es nicht sofort passiert — sonst wirkt der Kick spaeter wie ein Absturz. */
+    public static Component playtimeAfterCombat() {
+        return Component.translatable("mchelden.playtime.after_combat").withStyle(ChatFormatting.RED);
+    }
+
+    public static Component playtimeReset() {
+        return Component.translatable("mchelden.playtime.reset").withStyle(ChatFormatting.GREEN);
+    }
+
+    /**
+     * Der Kick-Screen beim Zeitlimit.
+     *
+     * <p>Bewusst anders im Ton als der Eliminations-Screen: das hier ist eine Spielregel,
+     * keine Strafe, und morgen geht es weiter.
+     */
+    public static Component playtimeKick() {
+        return Component.translatable("mchelden.playtime.kick.title").withStyle(ChatFormatting.GOLD)
+                .append(Component.literal("\n\n"))
+                .append(Component.translatable("mchelden.playtime.kick.body").withStyle(ChatFormatting.GRAY));
+    }
+
+    /**
+     * Nennt beim Einschalten gleich die Restzeit.
+     *
+     * <p>Nach einem Kick steht die naemlich auf null, und wer das Limit sofort wieder
+     * einschaltet, fliegt binnen einer Sekunde erneut raus, ohne etwas zu sehen.
+     */
+    public static Component debugPlaytime(boolean limited, String remaining) {
+        return limited
+                ? Component.translatable("mchelden.command.debug.playtime.on", remaining)
+                        .withStyle(ChatFormatting.GRAY)
+                : Component.translatable("mchelden.command.debug.playtime.off")
+                        .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component playtimeExempt() {
+        return Component.translatable("mchelden.command.info.playtime.exempt")
+                .withStyle(ChatFormatting.DARK_GRAY);
+    }
+
+    public static Component timeAdded(String player, String duration) {
+        return Component.translatable("mchelden.command.time.added", player, duration)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component timeSet(String player, String duration) {
+        return Component.translatable("mchelden.command.time.set", player, duration)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component playtimeReport(String player, String duration) {
+        return Component.literal(player + ": ").withStyle(ChatFormatting.GRAY)
+                .append(Component.translatable("mchelden.command.info.playtime.left", duration)
+                        .withStyle(ChatFormatting.WHITE));
     }
 }

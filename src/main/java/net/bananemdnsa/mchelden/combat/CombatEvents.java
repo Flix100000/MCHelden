@@ -4,6 +4,8 @@ import java.util.UUID;
 
 import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
+import net.bananemdnsa.mchelden.phase.PhaseManager;
+import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -87,5 +89,7 @@ public final class CombatEvents {
         CombatTracker.tick(event.getServer());
         HeartManager.tick(event.getServer());
         BountyManager.tick(event.getServer());
+        PhaseManager.tick(event.getServer());
+        PlaytimeTracker.tick(event.getServer());
     }
 }

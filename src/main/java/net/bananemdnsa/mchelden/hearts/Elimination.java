@@ -11,6 +11,7 @@ import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.GameType;
 
 /**
  * Ausscheiden und Zurückholen.
@@ -47,8 +48,26 @@ public final class Elimination {
 
         ServerPlayer player = HeartManager.online(server, uuid);
         if (player != null) {
-            player.connection.disconnect(HeldenText.eliminationKick());
+            remove(server, player);
         }
+    }
+
+    /**
+     * Nimmt einen Ausgeschiedenen aus dem Spiel.
+     *
+     * <p>Auf dem Server heisst das rauswerfen. In einer Einzelspieler-Welt waere das
+     * sinnlos — man kann niemanden aus seiner eigenen Welt aussperren, und beim naechsten
+     * Betreten stuende dieselbe Entscheidung wieder an. Dort greift stattdessen das, was
+     * Minecraft im Hardcore-Modus tut: zusehen duerfen, mitspielen nicht.
+     */
+    public static void remove(MinecraftServer server, ServerPlayer player) {
+        if (server.isSingleplayer()) {
+            player.setGameMode(GameType.SPECTATOR);
+            player.sendSystemMessage(HeldenText.eliminationSpectator());
+            return;
+        }
+
+        player.connection.disconnect(HeldenText.eliminationKick());
     }
 
     /** Holt einen Ausgeschiedenen mit dem angegebenen Herzstand zurück ins Spiel. */
@@ -59,6 +78,12 @@ public final class Elimination {
         state.setEliminated(false);
         state.setHearts(Math.max(1, hearts));
         store.setDirty();
+
+        // Wer im Einzelspieler nur zusehen durfte, darf jetzt wieder mitspielen.
+        ServerPlayer player = HeartManager.online(server, uuid);
+        if (player != null && player.isSpectator()) {
+            player.setGameMode(GameType.SURVIVAL);
+        }
 
         HeartManager.sync(server, uuid);
         BountyManager.syncPartnerOf(server, uuid);

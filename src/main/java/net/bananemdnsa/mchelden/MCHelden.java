@@ -12,9 +12,11 @@ import net.bananemdnsa.mchelden.registry.MCHeldenBlockEntities;
 import net.bananemdnsa.mchelden.registry.MCHeldenBlocks;
 import net.bananemdnsa.mchelden.registry.MCHeldenMenus;
 import net.bananemdnsa.mchelden.command.HeldenCommand;
+import net.bananemdnsa.mchelden.hearts.Elimination;
 import net.bananemdnsa.mchelden.hearts.HeartEvents;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
+import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.text.HeldenText;
@@ -49,6 +51,7 @@ public class MCHelden {
         NeoForge.EVENT_BUS.addListener(CombatEvents::onIncomingDamage);
         NeoForge.EVENT_BUS.addListener(CombatEvents::onDeath);
         NeoForge.EVENT_BUS.addListener(CombatEvents::onLogout);
+        NeoForge.EVENT_BUS.addListener(PlaytimeTracker::onLogout);
         NeoForge.EVENT_BUS.addListener(CombatEvents::onServerTick);
         NeoForge.EVENT_BUS.addListener(ContainerLock::onRightClickBlock);
         NeoForge.EVENT_BUS.addListener(ContainerLock::onEntityInteract);
@@ -78,8 +81,18 @@ public class MCHelden {
         state.setName(player.getGameProfile().getName());
         store.setDirty();
 
+        // Ausgeschieden: auf dem Server abweisen, im Einzelspieler als Zuschauer
+        // hereinlassen. Ein Rauswurf aus der eigenen Welt fuehrt zu nichts.
         if (state.isEliminated()) {
-            player.connection.disconnect(HeldenText.eliminationKick());
+            Elimination.remove(player.getServer(), player);
+            if (!player.getServer().isSingleplayer()) {
+                return;
+            }
+        }
+
+        // Vor allem anderen: wer sein Tageskontingent aufgebraucht hat, kommt gar nicht
+        // erst herein. Alles Weitere waere Arbeit fuer jemanden, der gleich wieder weg ist.
+        if (PlaytimeTracker.onJoin(player.getServer(), player)) {
             return;
         }
 

@@ -19,6 +19,8 @@ import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.combat.CombatTracker;
 import net.bananemdnsa.mchelden.combat.ItemQuota;
 import net.bananemdnsa.mchelden.hearts.Elimination;
+import net.bananemdnsa.mchelden.phase.PhaseManager;
+import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.state.GameState;
@@ -38,6 +40,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 public final class HeldenCommand {
+    /** Obergrenze fuer die Zeit-Commands. Zehn Stunden sind reichlich und fangen Vertipper ab. */
+    private static final int MAX_TIME_MINUTES = 600;
+
     private HeldenCommand() {
     }
 
@@ -110,6 +115,8 @@ public final class HeldenCommand {
                                                 GameProfileArgument.getGameProfiles(context, "ziel")))))
                         .then(Commands.literal("quota")
                                 .executes(context -> debugQuota(context.getSource())))
+                        .then(Commands.literal("playtime")
+                                .executes(context -> debugPlaytime(context.getSource())))
                         .then(Commands.literal("death")
                                 .executes(context -> debugDeath(context.getSource())))
                         .then(Commands.literal("animation")
@@ -117,13 +124,38 @@ public final class HeldenCommand {
                 .then(Commands.literal("phase")
                         .then(Commands.literal("info")
                                 .executes(context -> phaseInfo(context.getSource())))
+                        .then(Commands.literal("next")
+                                .executes(context -> phaseNext(context.getSource())))
                         .then(Commands.literal("set")
                                 .then(Commands.argument("phase", StringArgumentType.word())
                                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(
                                                 Arrays.stream(Phase.values()).map(Phase::getId), builder))
                                         .executes(context -> phaseSet(
                                                 context.getSource(),
-                                                StringArgumentType.getString(context, "phase")))))));
+                                                StringArgumentType.getString(context, "phase"))))))
+                .then(Commands.literal("time")
+                        .then(Commands.literal("check")
+                                .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
+                                        .executes(context -> timeCheck(
+                                                context.getSource(),
+                                                GameProfileArgument.getGameProfiles(context, "spieler")))))
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
+                                        .then(Commands.argument("minuten",
+                                                        IntegerArgumentType.integer(-MAX_TIME_MINUTES,
+                                                                MAX_TIME_MINUTES))
+                                                .executes(context -> timeAdd(
+                                                        context.getSource(),
+                                                        GameProfileArgument.getGameProfiles(context, "spieler"),
+                                                        IntegerArgumentType.getInteger(context, "minuten"))))))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
+                                        .then(Commands.argument("minuten",
+                                                        IntegerArgumentType.integer(0, MAX_TIME_MINUTES))
+                                                .executes(context -> timeSet(
+                                                        context.getSource(),
+                                                        GameProfileArgument.getGameProfiles(context, "spieler"),
+                                                        IntegerArgumentType.getInteger(context, "minuten"))))))));
     }
 
     private static int info(CommandSourceStack source, Collection<GameProfile> profiles) {
@@ -149,10 +181,26 @@ public final class HeldenCommand {
         source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.bounty",
                 bountyValue(store, state)), false);
         source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.playtime",
-                HeldenText.playtimeLeft(formatDuration(
-                        Math.max(0, PlayerState.DAILY_PLAYTIME_SECONDS - state.getPlaytimeUsedSeconds())))), false);
+                playtimeValue(source.getServer(), state)), false);
         source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.status",
                 state.isEliminated() ? HeldenText.statusEliminated() : HeldenText.statusActive()), false);
+    }
+
+    /**
+     * Die Spielzeit-Zeile.
+     *
+     * <p>Sagt ausdruecklich, wenn gar kein Limit gilt — im Einzelspieler oder ausserhalb
+     * der Aufbauphase. Eine Restzeit, die sich nie aendert, sieht sonst aus wie ein
+     * stehengebliebener Zaehler; genau so ist der Fall beim Testen zuerst aufgefallen.
+     */
+    private static Component playtimeValue(MinecraftServer server, PlayerState state) {
+        Component left = HeldenText.playtimeLeft(
+                formatDuration(PlaytimeTracker.remainingSeconds(state.getPlaytimeUsedSeconds())));
+
+        ServerPlayer online = server.getPlayerList().getPlayer(state.getUuid());
+        return online != null && !PlaytimeTracker.isLimited(server, online)
+                ? left.copy().append(" ").append(HeldenText.playtimeExempt())
+                : left;
     }
 
     private static Component heartsValue(int hearts) {
@@ -395,6 +443,23 @@ public final class HeldenCommand {
         return 1;
     }
 
+    /**
+     * Schaltet die eigene Op-Ausnahme vom Zeitlimit ab.
+     *
+     * <p>Ohne das laesst sich Etappe 6 im Einzelspieler nicht ansehen: Minecraft gibt dem
+     * Weltbesitzer fest Rechtestufe 4, solange Cheats an sind, und ohne Cheats gaebe es
+     * diesen Command nicht. Gilt bis zum Ausloggen.
+     */
+    private static int debugPlaytime(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        boolean limited = PlaytimeTracker.toggleForced(player);
+
+        String remaining = formatDuration(
+                PlaytimeTracker.remainingFor(source.getServer(), player.getUUID()));
+        source.sendSuccess(() -> HeldenText.debugPlaytime(limited, remaining), false);
+        return 1;
+    }
+
     /** Leert die Kontingente, damit sich der aufgebrauchte Zustand ansehen laesst. */
     private static int debugQuota(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
@@ -409,10 +474,64 @@ public final class HeldenCommand {
     }
 
     private static int phaseSet(CommandSourceStack source, String phaseId) {
-        Phase phase = Phase.byId(phaseId);
-        GameState.get(source.getServer()).setPhase(phase);
-        source.sendSuccess(() -> HeldenText.phaseSet(phase.getDisplayName()), true);
+        return startPhase(source, Phase.byId(phaseId));
+    }
+
+    private static int phaseNext(CommandSourceStack source) {
+        Phase next = PhaseManager.next(source.getServer());
+        if (next == null) {
+            source.sendFailure(HeldenText.phaseNoNext());
+            return 0;
+        }
+        return startPhase(source, next);
+    }
+
+    /**
+     * Leitet einen Phasenwechsel ein.
+     *
+     * <p>Nach vorn laeuft erst ein Countdown, zurueck greift es sofort — die Rueckmeldung
+     * an den Op sagt deswegen, was tatsaechlich passiert ist, statt beides gleich zu nennen.
+     */
+    private static int startPhase(CommandSourceStack source, Phase phase) {
+        if (!PhaseManager.begin(source.getServer(), phase)) {
+            source.sendSuccess(() -> HeldenText.phaseCurrent(phase.getDisplayName()), false);
+            return 0;
+        }
+
+        boolean counting = PhaseManager.isCountingDown();
+        source.sendSuccess(() -> counting
+                ? HeldenText.phaseStarting(phase.getDisplayName())
+                : HeldenText.phaseSet(phase.getDisplayName()), true);
         return 1;
+    }
+
+    private static int timeCheck(CommandSourceStack source, Collection<GameProfile> profiles) {
+        MinecraftServer server = source.getServer();
+        for (GameProfile profile : profiles) {
+            source.sendSuccess(() -> HeldenText.playtimeReport(nameOf(profile),
+                    formatDuration(PlaytimeTracker.remainingFor(server, profile.getId()))), false);
+        }
+        return profiles.size();
+    }
+
+    private static int timeAdd(CommandSourceStack source, Collection<GameProfile> profiles, int minutes) {
+        MinecraftServer server = source.getServer();
+        for (GameProfile profile : profiles) {
+            PlaytimeTracker.addSeconds(server, profile.getId(), minutes * 60);
+            source.sendSuccess(() -> HeldenText.timeAdded(nameOf(profile),
+                    formatDuration(PlaytimeTracker.remainingFor(server, profile.getId()))), true);
+        }
+        return profiles.size();
+    }
+
+    private static int timeSet(CommandSourceStack source, Collection<GameProfile> profiles, int minutes) {
+        MinecraftServer server = source.getServer();
+        for (GameProfile profile : profiles) {
+            PlaytimeTracker.setRemaining(server, profile.getId(), minutes * 60);
+            source.sendSuccess(() -> HeldenText.timeSet(nameOf(profile),
+                    formatDuration(PlaytimeTracker.remainingFor(server, profile.getId()))), true);
+        }
+        return profiles.size();
     }
 
     private static int phaseInfo(CommandSourceStack source) {

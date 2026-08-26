@@ -53,7 +53,11 @@ public final class QuotaHud {
         }
 
         RenderSystem.enableBlend();
-        int row = renderCounter(graphics, minecraft.font, player, 0,
+
+        // Die Spielzeit-Uhr belegt die oberste Zeile, solange das Limit gilt. Die
+        // Kontingente ruecken darunter, damit beim Kampfbeginn nichts uebereinanderliegt.
+        int row = ClientState.hasPlaytimeLimit() ? 1 : 0;
+        row = renderCounter(graphics, minecraft.font, player, row,
                 Items.ENDER_PEARL.getDefaultInstance(), ClientState.getPearlsLeft());
         renderCounter(graphics, minecraft.font, player, row,
                 Items.COBWEB.getDefaultInstance(), ClientState.getCobwebsLeft());

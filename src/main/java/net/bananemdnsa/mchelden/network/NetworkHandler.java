@@ -7,6 +7,7 @@ import net.bananemdnsa.mchelden.MCHelden;
 import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.combat.CombatTracker;
 import net.bananemdnsa.mchelden.combat.ItemQuota;
+import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
@@ -70,7 +71,7 @@ public final class NetworkHandler {
         PacketDistributor.sendToPlayer(player, new StateSyncPayload(
                 state.getHearts(),
                 bountyView(server, store, state),
-                Math.max(0, PlayerState.DAILY_PLAYTIME_SECONDS - state.getPlaytimeUsedSeconds()),
+                PlaytimeTracker.displayRemaining(server, player, state),
                 GameState.get(server).getPhase().getId()));
     }
 
