@@ -19,6 +19,7 @@ import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
@@ -42,6 +43,7 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
     private static final String KEY_OWNER_NAME = "ownerName";
     private static final String KEY_XP = "xp";
     private static final String KEY_DIED_AT = "diedAt";
+    private static final String KEY_NAMEPLATE = "nameplate";
 
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
 
@@ -55,6 +57,10 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
     /** Nur clientseitig genutzt, deswegen nicht gespeichert. */
     @Nullable
     private ItemStack headStack;
+
+    /** Kennung des schwebenden Namensschilds, damit es mit dem Grab wieder verschwindet. */
+    @Nullable
+    private UUID nameplateId;
 
     public GraveBlockEntity(BlockPos pos, BlockState state) {
         super(MCHeldenBlockEntities.GRAVE.get(), pos, state);
@@ -73,8 +79,17 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
         }
 
         setChanged();
-        if (level != null) {
+        if (level instanceof ServerLevel serverLevel) {
+            nameplateId = GraveNameplate.spawn(serverLevel, worldPosition, ownerName);
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_ALL);
+        }
+    }
+
+    /** Räumt das Namensschild ab. Beim Entfernen des Grabes aufrufen, egal auf welchem Weg. */
+    public void removeNameplate() {
+        if (level instanceof ServerLevel serverLevel) {
+            GraveNameplate.remove(serverLevel, nameplateId);
+            nameplateId = null;
         }
     }
 
@@ -144,6 +159,8 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
         if (level.isClientSide() || !grave.isEmpty()) {
             return;
         }
+
+        grave.removeNameplate();
 
         if (grave.storedXp > 0) {
             ExperienceOrb.award((net.minecraft.server.level.ServerLevel) level,
@@ -230,6 +247,7 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
         ownerName = tag.getString(KEY_OWNER_NAME);
         storedXp = tag.getInt(KEY_XP);
         diedAt = tag.getLong(KEY_DIED_AT);
+        nameplateId = tag.hasUUID(KEY_NAMEPLATE) ? tag.getUUID(KEY_NAMEPLATE) : null;
         headStack = null;
     }
 
@@ -244,5 +262,8 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
         tag.putString(KEY_OWNER_NAME, ownerName);
         tag.putInt(KEY_XP, storedXp);
         tag.putLong(KEY_DIED_AT, diedAt);
+        if (nameplateId != null) {
+            tag.putUUID(KEY_NAMEPLATE, nameplateId);
+        }
     }
 }

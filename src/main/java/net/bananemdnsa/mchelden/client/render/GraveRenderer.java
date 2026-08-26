@@ -8,11 +8,8 @@ import net.bananemdnsa.mchelden.grave.GraveBlockEntity;
 import com.mojang.math.Axis;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.ItemRenderer;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -55,15 +52,9 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
     private static final float BOB_HEIGHT = 0.055f;
     private static final float BOB_SPEED = 0.06f;
 
-    /** Ab wieviel Bloecken Entfernung das Namensschild erscheint. */
-    private static final double NAMEPLATE_RANGE = 12.0;
-    private static final double NAMEPLATE_RANGE_SQR = NAMEPLATE_RANGE * NAMEPLATE_RANGE;
-
-    private final Font font;
     private final ItemRenderer itemRenderer;
 
     public GraveRenderer(BlockEntityRendererProvider.Context context) {
-        this.font = context.getFont();
         this.itemRenderer = Minecraft.getInstance().getItemRenderer();
     }
 
@@ -80,7 +71,6 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
                 grave.getLevel().getGameTime(), height, COLOR);
 
         renderHead(grave, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
-        renderNameplate(grave, poseStack, bufferSource, packedLight);
     }
 
     /** Der Kopf des Toten schwebt über dem Grabstein und wippt langsam auf und ab. */
@@ -103,61 +93,6 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
         itemRenderer.renderStatic(head, ItemDisplayContext.FIXED, packedLight, packedOverlay,
                 poseStack, bufferSource, grave.getLevel(), 0);
         poseStack.popPose();
-    }
-
-    /**
-     * Name und Todeszeitpunkt, nur aus der Naehe.
-     *
-     * <p>Dauerhaft sichtbare Schilder ueber jedem Grab wuerden die Landschaft zupflastern.
-     * Wer davorsteht, will wissen wessen Grab es ist; wer zweihundert Bloecke weg steht,
-     * braucht die Information nicht.
-     */
-    private void renderNameplate(GraveBlockEntity grave, PoseStack poseStack,
-                                 MultiBufferSource bufferSource, int packedLight) {
-        Minecraft minecraft = Minecraft.getInstance();
-        Vec3 cameraPos = minecraft.gameRenderer.getMainCamera().getPosition();
-
-        if (Vec3.atCenterOf(grave.getBlockPos()).distanceToSqr(cameraPos) > NAMEPLATE_RANGE_SQR) {
-            return;
-        }
-
-        // Auch ohne Namen zeichnen: dann steht wenigstens die Zeit da, und man sieht am
-        // Ergebnis ob die Darstellung laeuft oder die Daten fehlen.
-        Component name = grave.getOwnerName().isEmpty()
-                ? Component.translatable("mchelden.grave.unknown")
-                : Component.literal(grave.getOwnerName());
-        Component since = elapsedSince(grave);
-
-        poseStack.pushPose();
-        poseStack.translate(0.5, 1.62, 0.5);
-        poseStack.mulPose(minecraft.getEntityRenderDispatcher().cameraOrientation());
-        poseStack.scale(-0.02f, -0.02f, 0.02f);
-
-        // Volle Helligkeit: sonst ist das Schild in einer dunklen Ecke kaum zu lesen.
-        drawCentered(name, 0, 0xFFFFFFFF, poseStack, bufferSource, LightTexture.FULL_BRIGHT);
-        drawCentered(since, 10, 0xFFC0C0C0, poseStack, bufferSource, LightTexture.FULL_BRIGHT);
-        poseStack.popPose();
-    }
-
-    private void drawCentered(Component text, int y, int color, PoseStack poseStack,
-                              MultiBufferSource bufferSource, int packedLight) {
-        // SEE_THROUGH statt tiefengeprueft: der Strahl ist eine Saeule mit 0,19 Bloecken
-        // Radius und schreibt in den Tiefenpuffer. Ein kurzer Name wie "Dev" ist schmaler
-        // als das und lag deswegen vollstaendig hinter der Strahlvorderseite — gezeichnet,
-        // aber unsichtbar. Der Kopf ist breiter als der Strahl und ragte vorne heraus,
-        // deshalb war er zu sehen und der Text nicht.
-        font.drawInBatch(text, -font.width(text) / 2f, y, color, false,
-                poseStack.last().pose(), bufferSource, Font.DisplayMode.SEE_THROUGH, 0, packedLight);
-    }
-
-    /** Wie lange der Tod her ist, in ganzen Minuten. */
-    private static Component elapsedSince(GraveBlockEntity grave) {
-        long ticks = grave.getLevel() == null ? 0 : grave.getLevel().getGameTime() - grave.getDiedAt();
-        int minutes = (int) Math.max(0, ticks / (20 * 60));
-
-        return minutes < 1
-                ? Component.translatable("mchelden.grave.just_now")
-                : Component.translatable("mchelden.grave.minutes_ago", minutes);
     }
 
     private static float heightFor(long age) {

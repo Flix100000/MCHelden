@@ -118,6 +118,7 @@ public class GraveBlock extends BaseEntityBlock {
     protected void onRemove(BlockState state, Level level, BlockPos pos,
                             BlockState newState, boolean movedByPiston) {
         if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof GraveBlockEntity grave) {
+            grave.removeNameplate();
             Containers.dropContents(level, pos, grave);
 
             if (grave.getStoredXp() > 0 && level instanceof ServerLevel serverLevel) {
