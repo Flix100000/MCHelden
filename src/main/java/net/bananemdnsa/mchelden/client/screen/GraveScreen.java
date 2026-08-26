@@ -48,10 +48,11 @@ public class GraveScreen extends AbstractContainerScreen<GraveMenu> {
     protected void init() {
         super.init();
 
+        // Die Profil-ID darf nicht fehlen — Minecraft wirft sonst beim Oeffnen.
         head = new ItemStack(Items.PLAYER_HEAD);
-        if (!menu.getOwnerName().isEmpty()) {
+        if (menu.getOwnerId() != null && !menu.getOwnerName().isEmpty()) {
             head.set(DataComponents.PROFILE,
-                    new ResolvableProfile(new GameProfile(null, menu.getOwnerName())));
+                    new ResolvableProfile(new GameProfile(menu.getOwnerId(), menu.getOwnerName())));
         }
     }
 

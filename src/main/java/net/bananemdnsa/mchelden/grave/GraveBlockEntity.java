@@ -12,6 +12,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.ContainerHelper;
@@ -87,6 +88,12 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
         if (player instanceof ServerPlayer serverPlayer) {
             serverPlayer.openMenu(this, buffer -> {
                 buffer.writeUtf(ownerName);
+                // Die UUID muss mit: der Kopf im Bildschirm laesst sich ohne sie nicht
+                // aufloesen, Minecraft besteht dort auf einer Profil-ID.
+                buffer.writeBoolean(owner != null);
+                if (owner != null) {
+                    buffer.writeUUID(owner);
+                }
                 buffer.writeVarInt(storedXp);
                 buffer.writeLong(diedAt);
             });
@@ -160,6 +167,22 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
         return ClientboundBlockEntityDataPacket.create(this);
     }
 
+    /**
+     * Wendet das Aktualisierungspaket an.
+     *
+     * <p>Minecrafts Standardverhalten ist hier leer — ohne diese Methode kommt das Paket an
+     * und wird verworfen. Die Anzeigedaten erreichten den Client dann nur beim Laden des
+     * Chunks, und ein Grab das vor den Augen des Spielers entsteht bliebe namenlos.
+     */
+    @Override
+    public void onDataPacket(Connection connection, ClientboundBlockEntityDataPacket packet,
+                             HolderLookup.Provider registries) {
+        CompoundTag tag = packet.getTag();
+        if (tag != null) {
+            loadAdditional(tag, registries);
+        }
+    }
+
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
@@ -179,7 +202,7 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
 
     @Override
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
-        return new GraveMenu(containerId, inventory, this, ownerName, storedXp, diedAt);
+        return new GraveMenu(containerId, inventory, this, ownerName, owner, storedXp, diedAt);
     }
 
     @Override

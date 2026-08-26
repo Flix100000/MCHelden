@@ -39,8 +39,13 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
     /** Ab wann er zu schrumpfen beginnt. Davor steht er ruhig. */
     private static final float SHRINK_START = 0.35f;
 
-    /** Gedecktes Blaugrau, passend zum Grabstein und klar unterscheidbar von einem Leuchtfeuer. */
-    private static final int COLOR = 0xFF8FA8C8;
+    /**
+     * Kraeftiges Blau, passend zu den Herzen.
+     *
+     * <p>Der erste Versuch war ein gedecktes Blaugrau — im Strahl kam davon nichts an, weil
+     * die Textur ohnehin hell ist und ein heller Farbton darauf schlicht weiss ergibt.
+     */
+    private static final int COLOR = 0xFF2A6BD0;
 
     private static final float BEAM_RADIUS = 0.10f;
     private static final float GLOW_RADIUS = 0.14f;
@@ -68,7 +73,7 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
 
         if (height > 0) {
             BeaconRenderer.renderBeaconBeam(poseStack, bufferSource, BeaconRenderer.BEAM_LOCATION,
-                    partialTick, 1.0F, grave.getLevel().getGameTime(), 1, height, COLOR,
+                    partialTick, 1.0F, grave.getLevel().getGameTime(), 0, height, COLOR,
                     BEAM_RADIUS, GLOW_RADIUS);
         }
 
@@ -85,7 +90,7 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
         }
 
         poseStack.pushPose();
-        poseStack.translate(0.5, 0.56, 0.5);
+        poseStack.translate(0.5, 0.64, 0.5);
         poseStack.scale(0.62f, 0.62f, 0.62f);
         poseStack.mulPose(Axis.YP.rotationDegrees(
                 -grave.getBlockState().getValue(GraveBlock.FACING).toYRot()));

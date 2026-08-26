@@ -1,5 +1,9 @@
 package net.bananemdnsa.mchelden.grave;
 
+import java.util.UUID;
+
+import javax.annotation.Nullable;
+
 import net.bananemdnsa.mchelden.registry.MCHeldenMenus;
 
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -29,15 +33,18 @@ public class GraveMenu extends AbstractContainerMenu {
 
     private final Container container;
     private final String ownerName;
+    @Nullable
+    private final UUID ownerId;
     private final int storedXp;
     private final long diedAt;
 
     /** Serverseitig: arbeitet direkt auf dem Grab. */
     public GraveMenu(int containerId, Inventory playerInventory, Container container,
-                     String ownerName, int storedXp, long diedAt) {
+                     String ownerName, @Nullable UUID ownerId, int storedXp, long diedAt) {
         super(MCHeldenMenus.GRAVE.get(), containerId);
         this.container = container;
         this.ownerName = ownerName;
+        this.ownerId = ownerId;
         this.storedXp = storedXp;
         this.diedAt = diedAt;
 
@@ -49,11 +56,18 @@ public class GraveMenu extends AbstractContainerMenu {
     /** Clientseitig: die Anzeigedaten kommen beim Öffnen mit, der Inhalt über die üblichen Pakete. */
     public GraveMenu(int containerId, Inventory playerInventory, RegistryFriendlyByteBuf buffer) {
         this(containerId, playerInventory, new SimpleContainer(GraveBlockEntity.SLOTS),
-                buffer.readUtf(), buffer.readVarInt(), buffer.readLong());
+                buffer.readUtf(),
+                buffer.readBoolean() ? buffer.readUUID() : null,
+                buffer.readVarInt(), buffer.readLong());
     }
 
     public String getOwnerName() {
         return ownerName;
+    }
+
+    @Nullable
+    public UUID getOwnerId() {
+        return ownerId;
     }
 
     public int getStoredXp() {
