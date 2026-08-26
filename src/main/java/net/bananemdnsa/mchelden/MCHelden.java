@@ -8,6 +8,7 @@ import net.bananemdnsa.mchelden.combat.ContainerLock;
 import net.bananemdnsa.mchelden.combat.QuotaEvents;
 import net.bananemdnsa.mchelden.command.HeldenCommand;
 import net.bananemdnsa.mchelden.hearts.HeartEvents;
+import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
@@ -72,5 +73,9 @@ public class MCHelden {
 
         CombatLogout.deliverPendingRespawn(player);
         NetworkHandler.syncTo(player);
+
+        // Wer sich im Kampf ausgeloggt hat, respawnt nie — er joint. Die vorgemerkte
+        // Verlust-Anzeige braucht deswegen auch hier einen Abnehmer.
+        HeartManager.deliverPendingLossDelayed(player.getUUID());
     }
 }

@@ -1,5 +1,7 @@
 package net.bananemdnsa.mchelden.hearts;
 
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +28,17 @@ public final class HeartManager {
      * der Verlust selbst steckt längst im persistenten Zustand.
      */
     private static final Set<UUID> PENDING_LOSS_ANIMATION = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Auslieferungen, die noch ein paar Ticks warten.
+     *
+     * <p>Beim Join laedt noch die Welt. Ohne Verzoegerung liefe die Animation hinter einem
+     * grauen Bildschirm ab und der Spieler saehe von seinem verlorenen Herz nichts.
+     */
+    private static final Map<UUID, Integer> DELAYED_DELIVERY = new ConcurrentHashMap<>();
+
+    /** Wie lange nach dem Join gewartet wird, bis die Animation laeuft. */
+    public static final int JOIN_DELAY_TICKS = 25;
 
     private HeartManager() {
     }
@@ -100,6 +113,35 @@ public final class HeartManager {
         ServerPlayer player = online(server, uuid);
         if (player != null) {
             player.sendSystemMessage(HeldenText.heartGained(total));
+        }
+    }
+
+    /** Liefert eine vorgemerkte Anzeige mit Verzoegerung. Beim Join aufrufen. */
+    public static void deliverPendingLossDelayed(UUID uuid) {
+        if (PENDING_LOSS_ANIMATION.contains(uuid)) {
+            DELAYED_DELIVERY.put(uuid, JOIN_DELAY_TICKS);
+        }
+    }
+
+    /** Zaehlt wartende Auslieferungen herunter. Aus dem Server-Tick aufrufen. */
+    public static void tick(MinecraftServer server) {
+        if (DELAYED_DELIVERY.isEmpty()) {
+            return;
+        }
+
+        Iterator<Map.Entry<UUID, Integer>> entries = DELAYED_DELIVERY.entrySet().iterator();
+        while (entries.hasNext()) {
+            Map.Entry<UUID, Integer> entry = entries.next();
+            if (entry.getValue() > 1) {
+                entry.setValue(entry.getValue() - 1);
+                continue;
+            }
+
+            entries.remove();
+            ServerPlayer player = online(server, entry.getKey());
+            if (player != null) {
+                deliverPendingLoss(player);
+            }
         }
     }
 

@@ -74,5 +74,6 @@ public final class CombatEvents {
 
     public static void onServerTick(ServerTickEvent.Post event) {
         CombatTracker.tick(event.getServer());
+        HeartManager.tick(event.getServer());
     }
 }
