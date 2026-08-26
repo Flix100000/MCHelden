@@ -37,9 +37,15 @@ public final class ClientState {
     private static int combatTicks;
     /** Laeuft kurz nach jedem Treffer, damit der Balken sichtbar aufleuchtet. */
     private static int combatFlashTicks;
+    private static int combatEnterTicks;
+    private static int combatExitTicks;
 
     /** Dauer des Aufleuchtens nach einem Treffer. */
     public static final int COMBAT_FLASH_TICKS = 7;
+    /** Wie lange der Balken beim Kampfbeginn einschwebt. */
+    public static final int COMBAT_ENTER_TICKS = 6;
+    /** Wie lange er nach Kampfende noch nachleuchtet und ausblendet. */
+    public static final int COMBAT_EXIT_TICKS = 12;
 
     private ClientState() {
     }
@@ -67,11 +73,31 @@ public final class ClientState {
      */
     public static void onCombat(int remainingTicks) {
         if (remainingTicks > combatTicks) {
+            if (combatTicks == 0) {
+                combatEnterTicks = COMBAT_ENTER_TICKS;
+                combatExitTicks = 0;
+            }
             combatFlashTicks = COMBAT_FLASH_TICKS;
         } else if (remainingTicks == 0 && combatTicks > 0) {
+            combatExitTicks = COMBAT_EXIT_TICKS;
             play(SoundEvents.NOTE_BLOCK_CHIME.value(), 0.6f, 1.5f);
         }
         combatTicks = remainingTicks;
+    }
+
+    /** Balken sichtbar? Nach Kampfende noch waehrend des Ausblendens. */
+    public static boolean isCombatVisible() {
+        return combatTicks > 0 || combatExitTicks > 0;
+    }
+
+    /** 0.0 beim Einschweben, 1.0 wenn der Balken steht. */
+    public static float combatEnter(float partialTick) {
+        return 1f - Mth.clamp(Math.max(0f, combatEnterTicks - partialTick) / COMBAT_ENTER_TICKS, 0f, 1f);
+    }
+
+    /** 1.0 direkt nach Kampfende, 0.0 wenn der Balken weg ist. */
+    public static float combatExit(float partialTick) {
+        return Mth.clamp(Math.max(0f, combatExitTicks - partialTick) / COMBAT_EXIT_TICKS, 0f, 1f);
     }
 
     /** 1.0 direkt nach einem Treffer, 0.0 wenn das Aufleuchten vorbei ist. */
@@ -93,6 +119,12 @@ public final class ClientState {
         }
         if (combatFlashTicks > 0) {
             combatFlashTicks--;
+        }
+        if (combatEnterTicks > 0) {
+            combatEnterTicks--;
+        }
+        if (combatExitTicks > 0) {
+            combatExitTicks--;
         }
 
         if (lossTicks <= 0) {
@@ -163,6 +195,8 @@ public final class ClientState {
         lossTicks = 0;
         combatTicks = 0;
         combatFlashTicks = 0;
+        combatEnterTicks = 0;
+        combatExitTicks = 0;
     }
 
     public static int getHearts() {

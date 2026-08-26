@@ -2,16 +2,13 @@
   "mchelden.phase.aufbau": "Buildup",
   "mchelden.phase.krieg": "War",
   "mchelden.phase.finalwar": "Final War",
-
   "mchelden.elimination.kick.title": "You have been eliminated.",
   "mchelden.elimination.kick.body": "Your hearts are used up.\nThe project is over for you.",
   "mchelden.elimination.title": "%s has been eliminated",
   "mchelden.elimination.subtitle": "killed by %s",
   "mchelden.survivors": "%s players left",
-
   "mchelden.heart.lost": "A heart lost — %s remaining",
   "mchelden.heart.gained": "A heart gained — %s now",
-
   "mchelden.command.phase.current": "Phase: %s",
   "mchelden.command.phase.set": "Phase set to %s",
   "mchelden.command.info.unknown": "  no state stored — never played on this server",
@@ -24,5 +21,6 @@
   "mchelden.command.info.status.active": "active",
   "mchelden.command.info.status.eliminated": "eliminated",
   "mchelden.command.info.playtime.left": "%s left",
-  "mchelden.command.revive": "%s is back in the game with %s hearts"
+  "mchelden.command.revive": "%s is back in the game with %s hearts",
+  "mchelden.combat.label": "in combat · %s"
 }

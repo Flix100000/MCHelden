@@ -47,7 +47,10 @@ public final class CombatEvents {
         }
 
         String killer = CombatTracker.opponentOf(victim.getUUID());
-        CombatTracker.forget(victim.getUUID());
+
+        // clear statt forget: der Client muss erfahren, dass der Kampf vorbei ist, sonst
+        // zaehlt er seinen lokalen Stand weiter und zeigt den Balken nach dem Respawn noch.
+        CombatTracker.clear(victim);
         HeartManager.loseHeart(server, victim.getUUID(), killer != null ? killer : "");
     }
 
