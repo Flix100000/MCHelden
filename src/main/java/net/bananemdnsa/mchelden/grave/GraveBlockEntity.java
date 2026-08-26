@@ -42,6 +42,9 @@ import net.minecraft.world.level.block.state.BlockState;
 public class GraveBlockEntity extends BaseContainerBlockEntity {
     public static final int SLOTS = 27;
 
+    /** Wie oft der Todeszeitpunkt auf dem Namensschild nachgezogen wird. */
+    private static final int NAMEPLATE_REFRESH_TICKS = 200;
+
     private static final String KEY_OWNER = "owner";
     private static final String KEY_OWNER_NAME = "ownerName";
     private static final String KEY_XP = "xp";
@@ -180,7 +183,17 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
      * macht, und nicht dem, der zufällig zuerst draufklickt.
      */
     public static void tick(Level level, BlockPos pos, BlockState state, GraveBlockEntity grave) {
-        if (level.isClientSide() || !grave.isEmpty()) {
+        if (level.isClientSide()) {
+            return;
+        }
+
+        // Die Anzeige geht in ganzen Minuten — oefter nachzusehen waere verschwendet.
+        if (level.getGameTime() % NAMEPLATE_REFRESH_TICKS == 0 && level instanceof ServerLevel serverLevel) {
+            GraveNameplate.updateText(serverLevel, grave.nameplateId, grave.ownerName,
+                    level.getGameTime() - grave.diedAt);
+        }
+
+        if (!grave.isEmpty()) {
             return;
         }
 
