@@ -15,7 +15,6 @@ import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.client.renderer.blockentity.BeaconRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.BlockPos;
@@ -50,12 +49,6 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
      */
     private static final int COLOR = 0xFF2A6BD0;
 
-    /** Welcher Anteil unten voll deckend bleibt, bevor das Ausgehen beginnt. */
-    private static final float SOLID_PORTION = 0.4f;
-    private static final int FADE_SEGMENTS = 7;
-
-    private static final float BEAM_RADIUS = 0.10f;
-    private static final float GLOW_RADIUS = 0.14f;
 
     /** Schwebehoehe des Kopfes ueber dem Block, plus Ausschlag und Tempo des Wippens. */
     private static final float HEAD_HEIGHT = 1.05f;
@@ -81,57 +74,13 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
             return;
         }
 
-        int height = heightFor(grave.getLevel().getGameTime() - grave.getDiedAt());
+        float height = heightFor(grave.getLevel().getGameTime() - grave.getDiedAt());
 
-        renderBeam(poseStack, bufferSource, partialTick, grave.getLevel().getGameTime(), height);
+        GraveBeam.render(poseStack, bufferSource, partialTick,
+                grave.getLevel().getGameTime(), height, COLOR);
 
         renderHead(grave, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
         renderNameplate(grave, poseStack, bufferSource, packedLight);
-    }
-
-    /**
-     * Zeichnet den Strahl und lässt ihn nach oben hin ausgehen.
-     *
-     * <p>Minecrafts Strahl hört hart auf, wo er endet. Bei vierzehn Blöcken sieht das aus wie
-     * abgeschnitten. Er wird deswegen in Abschnitte zerlegt, die nach oben hin durchsichtiger
-     * werden — das untere Stück bleibt voll deckend, damit er am Grab kräftig bleibt.
-     */
-    private static void renderBeam(PoseStack poseStack, MultiBufferSource bufferSource,
-                                   float partialTick, long gameTime, int height) {
-        if (height <= 0) {
-            return;
-        }
-
-        int solid = Math.max(1, Math.round(height * SOLID_PORTION));
-        segment(poseStack, bufferSource, partialTick, gameTime, 0, solid, 255);
-
-        int fade = height - solid;
-        if (fade <= 0) {
-            return;
-        }
-
-        for (int step = 0; step < FADE_SEGMENTS; step++) {
-            int from = solid + Math.round(fade * step / (float) FADE_SEGMENTS);
-            int to = solid + Math.round(fade * (step + 1) / (float) FADE_SEGMENTS);
-            if (to <= from) {
-                continue;
-            }
-
-            float remaining = 1f - (step + 0.5f) / FADE_SEGMENTS;
-            segment(poseStack, bufferSource, partialTick, gameTime, from, to - from,
-                    Math.round(255 * remaining * remaining));
-        }
-    }
-
-    private static void segment(PoseStack poseStack, MultiBufferSource bufferSource,
-                                float partialTick, long gameTime, int yOffset, int height, int alpha) {
-        if (alpha <= 0) {
-            return;
-        }
-
-        int color = (alpha << 24) | (COLOR & 0x00FFFFFF);
-        BeaconRenderer.renderBeaconBeam(poseStack, bufferSource, BeaconRenderer.BEAM_LOCATION,
-                partialTick, 1.0F, gameTime, yOffset, height, color, BEAM_RADIUS, GLOW_RADIUS);
     }
 
     /** Der Kopf des Toten schwebt über dem Grabstein und wippt langsam auf und ab. */
@@ -192,8 +141,11 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
 
     private void drawCentered(Component text, int y, int color, PoseStack poseStack,
                               MultiBufferSource bufferSource, int packedLight) {
+        // POLYGON_OFFSET statt NORMAL: das ist der Modus, mit dem Minecraft selbst Text in
+        // einem Blockentity zeichnet (Schilder). NORMAL gehoert zum Entitaeten-Durchgang und
+        // wird in diesem Durchgang nicht zuverlaessig ausgegeben.
         font.drawInBatch(text, -font.width(text) / 2f, y, color, false,
-                poseStack.last().pose(), bufferSource, Font.DisplayMode.NORMAL, 0x40000000, packedLight);
+                poseStack.last().pose(), bufferSource, Font.DisplayMode.POLYGON_OFFSET, 0, packedLight);
     }
 
     /** Wie lange der Tod her ist, in ganzen Minuten. */
@@ -206,9 +158,9 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
                 : Component.translatable("mchelden.grave.minutes_ago", minutes);
     }
 
-    private static int heightFor(long age) {
+    private static float heightFor(long age) {
         if (age < 0 || age >= LIFETIME_TICKS) {
-            return 0;
+            return 0f;
         }
 
         float progress = age / (float) LIFETIME_TICKS;
@@ -217,7 +169,7 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
         }
 
         float remaining = 1f - (progress - SHRINK_START) / (1f - SHRINK_START);
-        return Mth.floor(MAX_HEIGHT * remaining);
+        return MAX_HEIGHT * remaining;
     }
 
     /**
