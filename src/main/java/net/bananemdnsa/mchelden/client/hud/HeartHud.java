@@ -12,6 +12,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 
 /**
  * Die Leben-Reihe über der XP-Leiste.
@@ -86,7 +87,7 @@ public final class HeartHud {
         }
 
         // Der Slot, der gerade verloren geht: Sockel steht schon, das Herz zerspringt darüber.
-        if (slot == hearts && ClientState.isLossAnimationRunning()) {
+        if (slot == hearts && ClientState.isLossRunning()) {
             graphics.blitSprite(CONTAINER, x, y, SPRITE, SPRITE);
             renderShatter(graphics, x, y, delta);
             return;
@@ -109,9 +110,15 @@ public final class HeartHud {
      * fliegt nach oben links. Dadurch wirkt es wie ein Zerspringen und nicht wie ein Auffächern.
      */
     private static void renderShatter(GuiGraphics graphics, int x, int y, DeltaTracker delta) {
-        float progress = 1f - ClientState.lossAnimationProgress(delta.getGameTimeDeltaPartialTick(false));
+        float partial = delta.getGameTimeDeltaPartialTick(false);
+        float progress = ClientState.lossShatterProgress(partial);
         float alpha = Math.max(0f, 1f - progress * progress);
         float center = SPRITE / 2f;
+
+        // Waehrend des Haltens zittert das Herz leicht — die Ruhe vor dem Bruch.
+        float shiver = progress > 0f ? 0f
+                : Mth.sin(ClientState.lossElapsedTicks(partial) * 2.2f)
+                        * ClientState.lossHoldProgress(partial) * 0.7f;
 
         PoseStack pose = graphics.pose();
 
@@ -129,7 +136,7 @@ public final class HeartHud {
             float offsetY = dirY * SPREAD * progress + GRAVITY * progress * progress;
 
             pose.pushPose();
-            pose.translate(x + shardCenterX + offsetX, y + shardCenterY + offsetY, 0f);
+            pose.translate(x + shardCenterX + offsetX + shiver, y + shardCenterY + offsetY, 0f);
             pose.mulPose(Axis.ZP.rotationDegrees(SPIN[index] * SPIN_DEGREES * progress));
             pose.translate(-(SHARD / 2f), -(SHARD / 2f), 0f);
 
