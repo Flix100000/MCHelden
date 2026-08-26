@@ -1,8 +1,12 @@
 package net.bananemdnsa.mchelden.command;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
+
+import javax.annotation.Nullable;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
@@ -11,6 +15,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
+import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.combat.CombatTracker;
 import net.bananemdnsa.mchelden.combat.ItemQuota;
 import net.bananemdnsa.mchelden.hearts.Elimination;
@@ -73,9 +78,36 @@ public final class HeldenCommand {
                                         .executes(context -> combatClear(
                                                 context.getSource(),
                                                 EntityArgument.getPlayers(context, "spieler"))))))
+                .then(Commands.literal("bounty")
+                        .then(Commands.literal("roll")
+                                .executes(context -> bountyRoll(context.getSource())))
+                        .then(Commands.literal("show")
+                                .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
+                                        .executes(context -> bountyShow(
+                                                context.getSource(),
+                                                GameProfileArgument.getGameProfiles(context, "spieler")))))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
+                                        .then(Commands.argument("ziel", GameProfileArgument.gameProfile())
+                                                .executes(context -> bountySet(
+                                                        context.getSource(),
+                                                        GameProfileArgument.getGameProfiles(context, "spieler"),
+                                                        GameProfileArgument.getGameProfiles(context, "ziel"))))))
+                        .then(Commands.literal("clear")
+                                .executes(context -> bountyClearAll(context.getSource()))
+                                .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
+                                        .executes(context -> bountyClear(
+                                                context.getSource(),
+                                                GameProfileArgument.getGameProfiles(context, "spieler"))))))
                 .then(Commands.literal("debug")
                         .then(Commands.literal("combat")
                                 .executes(context -> debugCombat(context.getSource())))
+                        .then(Commands.literal("bounty")
+                                .executes(context -> debugBounty(context.getSource(), null))
+                                .then(Commands.argument("ziel", GameProfileArgument.gameProfile())
+                                        .executes(context -> debugBounty(
+                                                context.getSource(),
+                                                GameProfileArgument.getGameProfiles(context, "ziel")))))
                         .then(Commands.literal("quota")
                                 .executes(context -> debugQuota(context.getSource())))
                         .then(Commands.literal("death")
@@ -222,6 +254,124 @@ public final class HeldenCommand {
         return 1;
     }
 
+    private static int bountyRoll(CommandSourceStack source) {
+        int pairs = BountyManager.roll(source.getServer());
+        source.sendSuccess(() -> HeldenText.bountyRolled(pairs), true);
+        return pairs;
+    }
+
+    private static int bountyShow(CommandSourceStack source, Collection<GameProfile> profiles) {
+        PlayerStateStore store = PlayerStateStore.get(source.getServer());
+        for (GameProfile profile : profiles) {
+            PlayerState state = store.find(profile.getId());
+            Component target = state == null ? HeldenText.bountyNone() : bountyValue(store, state);
+            source.sendSuccess(() -> HeldenText.bountyShow(nameOf(profile), target), false);
+        }
+        return profiles.size();
+    }
+
+    /**
+     * Setzt eine Paarung von Hand. Nimmt jeweils den ersten Treffer: der Command ist
+     * Reparaturwerkzeug fuer genau zwei Leute, kein Massenwerkzeug.
+     */
+    private static int bountySet(CommandSourceStack source, Collection<GameProfile> players,
+                                 Collection<GameProfile> targets) {
+        GameProfile player = players.iterator().next();
+        GameProfile target = targets.iterator().next();
+
+        if (player.getId().equals(target.getId())) {
+            source.sendFailure(HeldenText.bountySelf());
+            return 0;
+        }
+
+        rememberName(source.getServer(), player);
+        rememberName(source.getServer(), target);
+
+        BountyManager.set(source.getServer(), player.getId(), target.getId());
+        source.sendSuccess(() -> HeldenText.bountySet(nameOf(player), nameOf(target)), true);
+        return 1;
+    }
+
+    private static int bountyClear(CommandSourceStack source, Collection<GameProfile> profiles) {
+        for (GameProfile profile : profiles) {
+            BountyManager.clear(source.getServer(), profile.getId());
+            source.sendSuccess(() -> HeldenText.bountyCleared(nameOf(profile)), true);
+        }
+        return profiles.size();
+    }
+
+    private static int bountyClearAll(CommandSourceStack source) {
+        BountyManager.clearAll(source.getServer());
+        source.sendSuccess(HeldenText::bountyClearedAll, true);
+        return 1;
+    }
+
+    /**
+     * Spielt das Gluecksrad noch einmal ab, ohne am Zustand etwas zu aendern.
+     *
+     * <p>Ohne den Command laesst sich die Inszenierung genau einmal pro Spielstand ansehen —
+     * beim echten Roll, und dann nie wieder.
+     *
+     * <p>Gerollt wird auf das eigene tatsaechliche Ziel, nicht auf ein erfundenes. Sonst
+     * floege am Ende ein Kopf in einen Kasten, in dem gar keiner wohnt, und der Abgang
+     * saehe nach einem Fehler aus statt nach dem, was er zeigen soll.
+     */
+    private static int debugBounty(CommandSourceStack source,
+                                   @Nullable Collection<GameProfile> targets) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        MinecraftServer server = source.getServer();
+
+        GameProfile target = targets != null ? targets.iterator().next() : pickOpponent(server, player);
+
+        // Allein auf dem Server bleibt nur der eigene Kopf. Ein Bounty auf sich selbst waere
+        // ein kaputter Zustand, also laeuft dann nur die Animation.
+        if (target.getId().equals(player.getUUID())) {
+            BountyManager.sendRoll(server, player, player.getUUID());
+            source.sendSuccess(HeldenText::bountyDebugSolo, false);
+            return 1;
+        }
+
+        rememberName(server, target);
+
+        // Erst das Rad, dann der Zustand: kaeme der Zustand zuerst, wuerde der Kasten oben
+        // links elf Sekunden zu frueh aufleuchten.
+        BountyManager.sendRoll(server, player, target.getId());
+        BountyManager.set(server, player.getUUID(), target.getId());
+
+        source.sendSuccess(() -> HeldenText.bountyDebug(nameOf(target)), false);
+        return 1;
+    }
+
+    /** Ein zufaelliger anderer Anwesender, sonst man selbst. */
+    private static GameProfile pickOpponent(MinecraftServer server, ServerPlayer player) {
+        List<ServerPlayer> others = new ArrayList<>(server.getPlayerList().getPlayers());
+        others.remove(player);
+
+        return others.isEmpty()
+                ? player.getGameProfile()
+                : others.get(server.overworld().getRandom().nextInt(others.size())).getGameProfile();
+    }
+
+    /**
+     * Haelt den Namen eines Spielers im Zustand fest, auch wenn er noch nie da war.
+     *
+     * <p>Namen werden sonst nur beim Join geschrieben. Ein Bounty auf jemanden, der den
+     * Server noch nicht gesehen hat, haette im HUD des Partners einen Kopf ohne Namen —
+     * und im Chat eine Zeile, in der das Ziel fehlt.
+     */
+    private static void rememberName(MinecraftServer source, GameProfile profile) {
+        if (profile.getName() == null || profile.getName().isEmpty()) {
+            return;
+        }
+
+        PlayerStateStore store = PlayerStateStore.get(source);
+        PlayerState state = store.getOrCreate(profile.getId());
+        if (!profile.getName().equals(state.getName())) {
+            state.setName(profile.getName());
+            store.setDirty();
+        }
+    }
+
     private static int combatClear(CommandSourceStack source, Collection<ServerPlayer> players) {
         for (ServerPlayer player : players) {
             CombatTracker.clear(player);
@@ -237,7 +387,7 @@ public final class HeldenCommand {
      */
     private static int debugCombat(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        CombatTracker.extend(player, "Debug");
+        CombatTracker.extend(player, "Debug", null);
 
         source.sendSuccess(() -> Component.literal("Treffer simuliert — Timer bei "
                 + CombatTracker.remainingTicks(player.getUUID()) / 20 + " Sekunden")
@@ -249,7 +399,7 @@ public final class HeldenCommand {
     private static int debugQuota(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         if (!CombatTracker.isInCombat(player.getUUID())) {
-            CombatTracker.extend(player, "Debug");
+            CombatTracker.extend(player, "Debug", null);
         }
         ItemQuota.drain(player);
 

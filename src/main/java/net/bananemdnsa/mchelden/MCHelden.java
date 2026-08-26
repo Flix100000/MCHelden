@@ -2,6 +2,7 @@ package net.bananemdnsa.mchelden;
 
 import com.mojang.logging.LogUtils;
 
+import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.combat.CombatEvents;
 import net.bananemdnsa.mchelden.combat.CombatLogout;
 import net.bananemdnsa.mchelden.combat.ContainerLock;
@@ -88,5 +89,8 @@ public class MCHelden {
         // Wer sich im Kampf ausgeloggt hat, respawnt nie — er joint. Die vorgemerkte
         // Verlust-Anzeige braucht deswegen auch hier einen Abnehmer.
         HeartManager.deliverPendingLossDelayed(player.getUUID());
+
+        // Und wer beim Bounty-Roll offline war, bekommt ihn jetzt nachgespielt.
+        BountyManager.deliverPendingRollDelayed(player.getServer(), player.getUUID());
     }
 }

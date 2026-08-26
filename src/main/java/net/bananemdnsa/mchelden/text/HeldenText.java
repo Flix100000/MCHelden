@@ -100,4 +100,63 @@ public final class HeldenText {
     public static Component revived(String player, int hearts) {
         return Component.translatable("mchelden.command.revive", player, hearts).withStyle(ChatFormatting.GREEN);
     }
+
+    public static Component bountyAssigned(String target) {
+        return Component.translatable("mchelden.bounty.assigned", target).withStyle(ChatFormatting.AQUA);
+    }
+
+    public static Component bountyNoneAssigned() {
+        return Component.translatable("mchelden.bounty.none_assigned").withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component bountyKillTitle() {
+        return Component.translatable("mchelden.bounty.kill.title").withStyle(ChatFormatting.AQUA);
+    }
+
+    public static Component bountyKillSubtitle(String victim) {
+        return Component.translatable("mchelden.bounty.kill.subtitle", victim).withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Muss ausdruecklich sagen, dass es kein Herz gekostet hat — sonst sucht der Verlierer danach. */
+    public static Component bountyKillVictim(String killer) {
+        return Component.translatable("mchelden.bounty.kill.victim", killer).withStyle(ChatFormatting.AQUA);
+    }
+
+    public static Component bountyKillBroadcast(String killer, String victim) {
+        return Component.translatable("mchelden.bounty.kill.broadcast", killer, victim)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component bountyRolled(int pairs) {
+        return Component.translatable("mchelden.command.bounty.rolled", pairs).withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component bountySet(String player, String target) {
+        return Component.translatable("mchelden.command.bounty.set", player, target)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component bountyCleared(String player) {
+        return Component.translatable("mchelden.command.bounty.cleared", player).withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component bountyClearedAll() {
+        return Component.translatable("mchelden.command.bounty.cleared_all").withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component bountySelf() {
+        return Component.translatable("mchelden.command.bounty.self").withStyle(ChatFormatting.RED);
+    }
+
+    public static Component bountyShow(String player, Component target) {
+        return Component.literal(player + ": ").withStyle(ChatFormatting.GRAY).append(target);
+    }
+
+    public static Component bountyDebug(String target) {
+        return Component.translatable("mchelden.command.bounty.debug", target).withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component bountyDebugSolo() {
+        return Component.translatable("mchelden.command.bounty.debug.solo").withStyle(ChatFormatting.GRAY);
+    }
 }

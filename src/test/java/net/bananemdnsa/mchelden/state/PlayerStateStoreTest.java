@@ -50,6 +50,35 @@ class PlayerStateStoreTest {
         assertTrue(restored.isEliminated());
     }
 
+    /**
+     * Wer beim Roll offline war, bekommt ihn beim naechsten Join nachgespielt. Zwischen
+     * Roll und Wiederkommen kann ein Serverneustart liegen — die Vormerkung muss ihn
+     * ueberstehen, sonst faellt der Spieler ohne Ankuendigung aus der Auslosung.
+     */
+    @Test
+    void verpassterRollUeberlebtDieSpeicherrunde() {
+        PlayerStateStore store = new PlayerStateStore();
+        UUID uuid = UUID.randomUUID();
+        store.getOrCreate(uuid).setPendingBountyRoll(true);
+
+        PlayerState restored = roundTrip(store).find(uuid);
+
+        assertNotNull(restored);
+        assertTrue(restored.isPendingBountyRoll());
+    }
+
+    @Test
+    void neuerSpielerHatKeinenVerpasstenRoll() {
+        PlayerStateStore store = new PlayerStateStore();
+        UUID uuid = UUID.randomUUID();
+        store.getOrCreate(uuid);
+
+        PlayerState restored = roundTrip(store).find(uuid);
+
+        assertNotNull(restored);
+        assertFalse(restored.isPendingBountyRoll());
+    }
+
     @Test
     void neuerSpielerStartetMitDreiHerzenUndOhneBounty() {
         PlayerStateStore store = new PlayerStateStore();

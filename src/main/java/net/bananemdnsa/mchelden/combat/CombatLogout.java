@@ -1,5 +1,6 @@
 package net.bananemdnsa.mchelden.combat;
 
+import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.text.HeldenText;
 import net.bananemdnsa.mchelden.state.PlayerState;
@@ -40,6 +41,7 @@ public final class CombatLogout {
         }
 
         String opponent = CombatTracker.opponentOf(player.getUUID());
+        java.util.UUID opponentId = CombatTracker.opponentIdOf(player.getUUID());
         CombatTracker.recordCombatDeath(player.getUUID(), opponent);
         CombatTracker.clear(player);
 
@@ -61,6 +63,12 @@ public final class CombatLogout {
         PlayerStateStore store = PlayerStateStore.get(server);
         store.getOrCreate(player.getUUID()).setPendingRespawn(true);
         store.setDirty();
+
+        // Wer sich seinem Bounty-Partner ausloggt, hat den Bounty-Kampf verloren. Der
+        // Logout ist ein Tod wie jeder andere, also loest er auch das Bounty auf.
+        if (BountyManager.resolve(server, player.getUUID(), opponentId)) {
+            return;
+        }
 
         HeartManager.loseHeart(server, player.getUUID(), opponent != null ? opponent : "");
     }

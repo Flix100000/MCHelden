@@ -1,8 +1,10 @@
 package net.bananemdnsa.mchelden.network;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import net.bananemdnsa.mchelden.MCHelden;
+import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.combat.CombatTracker;
 import net.bananemdnsa.mchelden.combat.ItemQuota;
 import net.bananemdnsa.mchelden.state.GameState;
@@ -32,6 +34,10 @@ public final class NetworkHandler {
                 CombatSyncPayload.TYPE,
                 CombatSyncPayload.STREAM_CODEC,
                 NetworkHandler::handleCombatOnClient);
+        registrar.playToClient(
+                BountyRollPayload.TYPE,
+                BountyRollPayload.STREAM_CODEC,
+                NetworkHandler::handleBountyRollOnClient);
     }
 
     /**
@@ -63,8 +69,7 @@ public final class NetworkHandler {
 
         PacketDistributor.sendToPlayer(player, new StateSyncPayload(
                 state.getHearts(),
-                resolveBountyName(store, state.getBountyTarget()),
-                state.isBountyResolved(),
+                bountyView(server, store, state),
                 Math.max(0, PlayerState.DAILY_PLAYTIME_SECONDS - state.getPlaytimeUsedSeconds()),
                 GameState.get(server).getPhase().getId()));
     }
@@ -75,12 +80,32 @@ public final class NetworkHandler {
         }
     }
 
-    private static String resolveBountyName(PlayerStateStore store, UUID target) {
-        if (target == null) {
-            return "";
+    /**
+     * Baut die Bounty-Sicht fuer das HUD.
+     *
+     * <p>Ob das Ziel ausgeschieden ist, steht nirgends gespeichert — es wird hier aus dem
+     * Zustand des Ziels abgelesen. Ein {@code /helden revive} hebt die Ausgrauung damit von
+     * selbst wieder auf, ohne dass ein zweiter Wert nachgefuehrt werden muesste.
+     */
+    private static BountyView bountyView(MinecraftServer server, PlayerStateStore store,
+                                         PlayerState state) {
+        // Wer sein Gluecksrad noch vor sich hat, bekommt vorerst gar kein Bounty zu sehen —
+        // sonst stuende das Ergebnis oben links, bevor der Streifen es preisgibt.
+        if (BountyManager.isRollPending(server, state.getUuid())) {
+            return BountyView.NONE;
         }
+
+        UUID target = state.getBountyTarget();
+        if (target == null) {
+            return new BountyView("", Optional.empty(), state.isBountyResolved(), false);
+        }
+
         PlayerState targetState = store.find(target);
-        return targetState != null ? targetState.getName() : "";
+        return new BountyView(
+                targetState != null ? targetState.getName() : "",
+                Optional.of(target),
+                false,
+                targetState != null && targetState.isEliminated());
     }
 
     /**
@@ -97,6 +122,10 @@ public final class NetworkHandler {
 
     private static void handleCombatOnClient(CombatSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onCombat(payload));
+    }
+
+    private static void handleBountyRollOnClient(BountyRollPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onBountyRoll(payload));
     }
 
     public static String version() {

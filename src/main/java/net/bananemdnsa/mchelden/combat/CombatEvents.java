@@ -1,5 +1,8 @@
 package net.bananemdnsa.mchelden.combat;
 
+import java.util.UUID;
+
+import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
 
 import net.minecraft.server.MinecraftServer;
@@ -47,11 +50,19 @@ public final class CombatEvents {
         }
 
         String killer = CombatTracker.opponentOf(victim.getUUID());
+        UUID killerId = CombatTracker.opponentIdOf(victim.getUUID());
         CombatTracker.recordCombatDeath(victim.getUUID(), killer);
 
         // clear statt forget: der Client muss erfahren, dass der Kampf vorbei ist, sonst
         // zaehlt er seinen lokalen Stand weiter und zeigt den Balken nach dem Respawn noch.
         CombatTracker.clear(victim);
+
+        // War es der Bounty-Kampf, kostet der Tod kein Herz. Alles andere — Grab,
+        // Itemsplit, XP — laeuft trotzdem: geschuetzt ist nur das Herz.
+        if (BountyManager.resolve(server, victim.getUUID(), killerId)) {
+            return;
+        }
+
         HeartManager.loseHeart(server, victim.getUUID(), killer != null ? killer : "");
     }
 
@@ -75,5 +86,6 @@ public final class CombatEvents {
     public static void onServerTick(ServerTickEvent.Post event) {
         CombatTracker.tick(event.getServer());
         HeartManager.tick(event.getServer());
+        BountyManager.tick(event.getServer());
     }
 }

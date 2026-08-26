@@ -41,19 +41,21 @@ public final class CombatTracker {
 
     /** Ein Spieler trifft einen anderen: beide hängen danach im Timer. */
     public static void onPlayerHit(ServerPlayer attacker, ServerPlayer victim) {
-        extend(victim, attacker.getGameProfile().getName());
-        extend(attacker, victim.getGameProfile().getName());
+        extend(victim, attacker.getGameProfile().getName(), attacker.getUUID());
+        extend(attacker, victim.getGameProfile().getName(), victim.getUUID());
     }
 
     /**
      * Verlängert den Timer um einen Treffer, gedeckelt bei drei Minuten.
      *
      * @param opponent Name des Gegenübers, für Todesnachricht und Ansage
+     * @param opponentId UUID des Gegenübers, {@code null} bei simulierten Treffern
      */
-    public static void extend(ServerPlayer player, String opponent) {
+    public static void extend(ServerPlayer player, String opponent, @Nullable UUID opponentId) {
         Tag tag = TAGS.computeIfAbsent(player.getUUID(), uuid -> new Tag());
         tag.ticks = Math.min(MAX_TICKS, tag.ticks + HIT_TICKS);
         tag.opponent = opponent;
+        tag.opponentId = opponentId;
 
         NetworkHandler.sendCombat(player);
     }
@@ -72,6 +74,18 @@ public final class CombatTracker {
     public static String opponentOf(UUID uuid) {
         Tag tag = TAGS.get(uuid);
         return tag != null ? tag.opponent : null;
+    }
+
+    /**
+     * Dasselbe als UUID.
+     *
+     * <p>Die Bounty-Auflösung darf nicht an einem Namensvergleich hängen: Namen sind
+     * änderbar und im Zustand nur als Kopie gespeichert.
+     */
+    @Nullable
+    public static UUID opponentIdOf(UUID uuid) {
+        Tag tag = TAGS.get(uuid);
+        return tag != null ? tag.opponentId : null;
     }
 
     /** Nimmt den Timer weg, ohne dass er abgelaufen ist. Für {@code /helden combat clear}. */
@@ -129,5 +143,7 @@ public final class CombatTracker {
         private int ticks;
         @Nullable
         private String opponent;
+        @Nullable
+        private UUID opponentId;
     }
 }

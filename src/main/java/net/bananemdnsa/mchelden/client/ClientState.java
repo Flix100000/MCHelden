@@ -1,14 +1,24 @@
 package net.bananemdnsa.mchelden.client;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import javax.annotation.Nullable;
+
+import net.bananemdnsa.mchelden.network.BountyRollPayload;
 import net.bananemdnsa.mchelden.network.StateSyncPayload;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.PlayerState;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 
 /**
  * Letzter vom Server empfangener Zustand des eigenen Spielers. Quelle fuer alle HUDs.
@@ -23,9 +33,23 @@ public final class ClientState {
 
     private static int hearts = PlayerState.DEFAULT_HEARTS;
     private static String bountyTargetName = "";
+    @Nullable
+    private static UUID bountyTargetId;
     private static boolean bountyResolved;
+    private static boolean bountyTargetEliminated;
     private static int playtimeRemainingSeconds = PlayerState.DAILY_PLAYTIME_SECONDS;
     private static Phase phase = Phase.AUFBAU;
+
+    /** Wie lange der Rahmen des Kastens aufleuchtet, wenn ein Ziel ankommt. */
+    public static final int BOUNTY_APPEAR_TICKS = 10;
+    /** Wie lange der Balken ueber einem ausgeschiedenen Ziel einfaehrt. */
+    public static final int BOUNTY_GONE_TICKS = 8;
+    /** Wie lange der Kasten zusammenfaehrt, wenn das Bounty aufgeloest ist. */
+    public static final int BOUNTY_CLOSE_TICKS = 10;
+
+    private static int bountyAppearTicks;
+    private static int bountyGoneTicks;
+    private static int bountyCloseTicks;
 
     /**
      * Eine Uhr fuer HUD und Overlay gemeinsam. Getrennte Zaehler koennten auseinanderlaufen,
@@ -63,10 +87,60 @@ public final class ClientState {
 
     public static void accept(StateSyncPayload payload) {
         hearts = payload.hearts();
-        bountyTargetName = payload.bountyTargetName();
-        bountyResolved = payload.bountyResolved();
+
+        UUID hadTarget = bountyTargetId;
+        boolean wasGone = bountyTargetEliminated;
+
+        bountyTargetName = payload.bounty().targetName();
+        bountyTargetId = payload.bounty().targetId().orElse(null);
+        bountyResolved = payload.bounty().resolved();
+        bountyTargetEliminated = payload.bounty().targetEliminated();
         playtimeRemainingSeconds = payload.playtimeRemainingSeconds();
         phase = Phase.byId(payload.phaseId());
+
+        noteBountyChange(hadTarget, wasGone);
+    }
+
+    /**
+     * Gibt den Aenderungen am Bounty ihren Moment im HUD.
+     *
+     * <p>Ein Kasten, der zwischen zwei Frames einfach einen anderen Inhalt hat, wird
+     * uebersehen. Ankommen, Entwertet-Werden und Verschwinden bekommen deswegen je eine
+     * kurze Bewegung — kurz genug, dass sie nicht im Weg ist.
+     */
+    private static void noteBountyChange(@Nullable UUID hadTarget, boolean wasGone) {
+        // Beim Roll kommt der Zustand elf Sekunden vor dem Kopf an. Das Aufleuchten haengt
+        // deswegen am Ende des Laufs, nicht am Paket.
+        if (bountyTargetId != null && !bountyTargetId.equals(hadTarget) && !BountyRoll.isRunning()) {
+            bountyAppearTicks = BOUNTY_APPEAR_TICKS;
+        }
+
+        if (bountyTargetEliminated && !wasGone) {
+            bountyGoneTicks = BOUNTY_GONE_TICKS;
+            play(SoundEvents.NOTE_BLOCK_BASS.value(), 0.8f, 0.5f);
+        }
+
+        if (hadTarget != null && bountyTargetId == null && bountyResolved) {
+            bountyCloseTicks = BOUNTY_CLOSE_TICKS;
+        }
+    }
+
+    /** Der ausgeloste Kopf ist in seinem Kasten angekommen. Ruft {@link BountyRoll} auf. */
+    static void onRollLanded() {
+        if (bountyTargetId != null) {
+            bountyAppearTicks = BOUNTY_APPEAR_TICKS;
+        }
+    }
+
+    /**
+     * Startet das Gluecksrad.
+     *
+     * <p>Der Zustand vom Server kommt im selben Moment an, das HUD zeigt aber weiter das
+     * Fragezeichen, solange der Lauf laeuft — sonst stuende das Ergebnis oben links, bevor
+     * der Streifen es preisgibt.
+     */
+    public static void onBountyRoll(BountyRollPayload payload) {
+        BountyRoll.start(payload);
     }
 
     /** Startet Halten und Zerspringen. Das verlorene Herz bleibt so lange sichtbar. */
@@ -181,6 +255,22 @@ public final class ClientState {
             combatExitTicks--;
         }
 
+        boolean wasRolling = BountyRoll.isRunning();
+        BountyRoll.tick();
+        if (wasRolling && !BountyRoll.isRunning()) {
+            onRollLanded();
+        }
+
+        if (bountyAppearTicks > 0) {
+            bountyAppearTicks--;
+        }
+        if (bountyGoneTicks > 0) {
+            bountyGoneTicks--;
+        }
+        if (bountyCloseTicks > 0) {
+            bountyCloseTicks--;
+        }
+
         if (lossTicks <= 0) {
             return;
         }
@@ -250,7 +340,14 @@ public final class ClientState {
     public static void reset() {
         hearts = PlayerState.DEFAULT_HEARTS;
         bountyTargetName = "";
+        bountyTargetId = null;
         bountyResolved = false;
+        bountyTargetEliminated = false;
+        BountyRoll.reset();
+        net.bananemdnsa.mchelden.client.hud.PlayerHead.forget();
+        bountyAppearTicks = 0;
+        bountyGoneTicks = 0;
+        bountyCloseTicks = 0;
         playtimeRemainingSeconds = PlayerState.DAILY_PLAYTIME_SECONDS;
         phase = Phase.AUFBAU;
         lossTicks = 0;
@@ -269,15 +366,47 @@ public final class ClientState {
     }
 
     public static boolean hasBounty() {
-        return !bountyTargetName.isEmpty();
+        return bountyTargetId != null;
     }
 
     public static String getBountyTargetName() {
         return bountyTargetName;
     }
 
+    @Nullable
+    public static UUID getBountyTargetId() {
+        return bountyTargetId;
+    }
+
     public static boolean isBountyResolved() {
         return bountyResolved;
+    }
+
+    /** Das Ziel ist ausgeschieden: der Kopf bleibt stehen, aber grau und durchgestrichen. */
+    public static boolean isBountyTargetEliminated() {
+        return bountyTargetEliminated;
+    }
+
+    /** Der Kasten leuchtet kurz auf, wenn ein Ziel darin ankommt. 1.0 direkt danach. */
+    public static float bountyAppear(float partialTick) {
+        return Mth.clamp(Math.max(0f, bountyAppearTicks - partialTick) / BOUNTY_APPEAR_TICKS, 0f, 1f);
+    }
+
+    /** Wie weit der Balken ueber einem ausgeschiedenen Ziel eingefahren ist. 1.0 wenn ganz. */
+    public static float bountyGone(float partialTick) {
+        if (bountyGoneTicks <= 0) {
+            return bountyTargetEliminated ? 1f : 0f;
+        }
+        return 1f - Mth.clamp(Math.max(0f, bountyGoneTicks - partialTick) / BOUNTY_GONE_TICKS, 0f, 1f);
+    }
+
+    /** 1.0 wenn der Kasten noch offen ist, 0.0 wenn er zugefahren ist. */
+    public static float bountyClose(float partialTick) {
+        return Mth.clamp(Math.max(0f, bountyCloseTicks - partialTick) / BOUNTY_CLOSE_TICKS, 0f, 1f);
+    }
+
+    public static boolean isBountyClosing() {
+        return bountyCloseTicks > 0;
     }
 
     public static int getPlaytimeRemainingSeconds() {

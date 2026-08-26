@@ -2,6 +2,7 @@ package net.bananemdnsa.mchelden.hearts;
 
 import java.util.UUID;
 
+import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.text.HeldenText;
@@ -38,6 +39,10 @@ public final class Elimination {
         state.setHearts(0);
         store.setDirty();
 
+        // Der Bounty-Partner muss es im HUD sehen: sein viertes Herz ist ab jetzt
+        // unerreichbar, es gibt kein Ersatzziel.
+        BountyManager.syncPartnerOf(server, uuid);
+
         announce(server, state.getName(), killerName, store.countAlive());
 
         ServerPlayer player = HeartManager.online(server, uuid);
@@ -56,6 +61,7 @@ public final class Elimination {
         store.setDirty();
 
         HeartManager.sync(server, uuid);
+        BountyManager.syncPartnerOf(server, uuid);
     }
 
     private static void announce(MinecraftServer server, String victim, String killer, int alive) {

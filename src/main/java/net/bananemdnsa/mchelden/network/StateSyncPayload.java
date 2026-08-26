@@ -11,13 +11,10 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * Der eigene Spielerzustand, gebuendelt fuer die HUDs. Wird beim Join und nach jeder
  * Aenderung an genau den betroffenen Spieler geschickt.
- *
- * <p>{@code bountyTargetName} ist leer, solange kein Bounty vergeben ist.
  */
 public record StateSyncPayload(
         int hearts,
-        String bountyTargetName,
-        boolean bountyResolved,
+        BountyView bounty,
         int playtimeRemainingSeconds,
         String phaseId) implements CustomPacketPayload {
 
@@ -26,8 +23,7 @@ public record StateSyncPayload(
 
     public static final StreamCodec<RegistryFriendlyByteBuf, StateSyncPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, StateSyncPayload::hearts,
-            ByteBufCodecs.STRING_UTF8, StateSyncPayload::bountyTargetName,
-            ByteBufCodecs.BOOL, StateSyncPayload::bountyResolved,
+            BountyView.STREAM_CODEC, StateSyncPayload::bounty,
             ByteBufCodecs.VAR_INT, StateSyncPayload::playtimeRemainingSeconds,
             ByteBufCodecs.STRING_UTF8, StateSyncPayload::phaseId,
             StateSyncPayload::new);

@@ -27,6 +27,7 @@ public class PlayerState {
     private static final String KEY_PLAYTIME_DAY = "playtimeDay";
     private static final String KEY_ELIMINATED = "eliminated";
     private static final String KEY_PENDING_RESPAWN = "pendingRespawn";
+    private static final String KEY_PENDING_BOUNTY_ROLL = "pendingBountyRoll";
 
     private final UUID uuid;
     private String name = "";
@@ -38,6 +39,7 @@ public class PlayerState {
     private long playtimeResetDay = -1L;
     private boolean eliminated;
     private boolean pendingRespawn;
+    private boolean pendingBountyRoll;
 
     public PlayerState(UUID uuid) {
         this.uuid = uuid;
@@ -110,6 +112,22 @@ public class PlayerState {
         this.pendingRespawn = pendingRespawn;
     }
 
+    /**
+     * Der Spieler war beim Bounty-Roll offline und bekommt ihn beim naechsten Join
+     * nachgespielt.
+     *
+     * <p>Persistent, weil zwischen Roll und Wiederkommen ein Serverneustart liegen kann.
+     * Ginge die Vormerkung dabei verloren, fiele er ohne Ankuendigung aus der Auslosung —
+     * und damit dauerhaft aus dem Rennen um das vierte Herz.
+     */
+    public boolean isPendingBountyRoll() {
+        return pendingBountyRoll;
+    }
+
+    public void setPendingBountyRoll(boolean pendingBountyRoll) {
+        this.pendingBountyRoll = pendingBountyRoll;
+    }
+
     public boolean isEliminated() {
         return eliminated;
     }
@@ -131,6 +149,7 @@ public class PlayerState {
         tag.putLong(KEY_PLAYTIME_DAY, playtimeResetDay);
         tag.putBoolean(KEY_ELIMINATED, eliminated);
         tag.putBoolean(KEY_PENDING_RESPAWN, pendingRespawn);
+        tag.putBoolean(KEY_PENDING_BOUNTY_ROLL, pendingBountyRoll);
         return tag;
     }
 
@@ -144,6 +163,7 @@ public class PlayerState {
         state.playtimeResetDay = tag.getLong(KEY_PLAYTIME_DAY);
         state.eliminated = tag.getBoolean(KEY_ELIMINATED);
         state.pendingRespawn = tag.getBoolean(KEY_PENDING_RESPAWN);
+        state.pendingBountyRoll = tag.getBoolean(KEY_PENDING_BOUNTY_ROLL);
         return state;
     }
 }
