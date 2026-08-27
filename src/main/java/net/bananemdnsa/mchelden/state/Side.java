@@ -36,7 +36,7 @@ public enum Side {
         return Component.translatable("mchelden.side." + id);
     }
 
-    /** Zu welcher Seite eine X-Koordinate gehoert. Genau null zaehlt als Westen. */
+    /** Zu welcher Seite eine X-Koordinate gehoert. Genau null zaehlt als Osten. */
     public static Side of(double x) {
         return x < 0 ? WEST : EAST;
     }

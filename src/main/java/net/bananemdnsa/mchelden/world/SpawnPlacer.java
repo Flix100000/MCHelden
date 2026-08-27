@@ -140,7 +140,11 @@ public final class SpawnPlacer {
         // Unter der Welt gelandet: das kann nur ein kaputter gespeicherter Startpunkt sein,
         // und der wuerde sich bei jedem weiteren Tod wiederholen.
         boolean belowWorld = player.getY() <= server.overworld().getMinBuildHeight();
-        boolean wrongSide = DividerWall.isUp(server) && !side.contains(player.getX());
+        // Der Abstand zur Linie zaehlt mit: bei exakt x = 0 besteht ein Ost-Spieler die
+        // Seitenpruefung — genau null zaehlt als Osten — und stuende trotzdem in der Wand.
+        boolean wrongSide = DividerWall.isUp(server)
+                && (!side.contains(player.getX())
+                        || Math.abs(player.getX()) < DividerWall.MARGIN);
 
         if (belowWorld || wrongSide) {
             returnToStart(server, player);
