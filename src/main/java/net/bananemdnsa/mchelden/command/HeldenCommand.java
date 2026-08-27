@@ -220,6 +220,8 @@ public final class HeldenCommand {
                 bountyValue(store, state)), false);
         source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.playtime",
                 playtimeValue(source.getServer(), state)), false);
+        source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.combat",
+                combatValue(state.getUuid())), false);
         source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.status",
                 state.isEliminated() ? HeldenText.statusEliminated() : HeldenText.statusActive()), false);
     }
@@ -239,6 +241,20 @@ public final class HeldenCommand {
         return online != null && !PlaytimeTracker.isLimited(server, online)
                 ? left.copy().append(" ").append(HeldenText.playtimeExempt())
                 : left;
+    }
+
+    /**
+     * Der laufende Combat-Timer, oder ein Strich.
+     *
+     * <p>Der letzte der fuenf Werte aus Spec-Abschnitt 13, und beim Nachfragen im Discord
+     * der wichtigste: an ihm haengen GUI-Sperre, Safezone-Zutritt und die Frage, ob ein
+     * Logout als Tod zaehlt.
+     */
+    private static Component combatValue(UUID uuid) {
+        int ticks = CombatTracker.remainingTicks(uuid);
+        return ticks <= 0
+                ? HeldenText.infoNone()
+                : Component.literal(formatDuration(ticks / 20)).withStyle(ChatFormatting.RED);
     }
 
     private static Component heartsValue(int hearts) {
