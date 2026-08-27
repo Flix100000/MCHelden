@@ -47,6 +47,10 @@ public final class NetworkHandler {
                 WallDropPayload.TYPE,
                 WallDropPayload.STREAM_CODEC,
                 NetworkHandler::handleWallDropOnClient);
+        registrar.playToClient(
+                SafeZoneShatterPayload.TYPE,
+                SafeZoneShatterPayload.STREAM_CODEC,
+                NetworkHandler::handleSafeZoneShatterOnClient);
     }
 
     /**
@@ -154,6 +158,20 @@ public final class NetworkHandler {
     public static void sendWallDrop(MinecraftServer server, boolean dropping) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             PacketDistributor.sendToPlayer(player, new WallDropPayload(dropping));
+        }
+    }
+
+    private static void handleSafeZoneShatterOnClient(SafeZoneShatterPayload payload,
+                                                      IPayloadContext context) {
+        context.enqueueWork(() ->
+                net.bananemdnsa.mchelden.client.ClientState.onSafeZoneShatter(payload.stage()));
+    }
+
+    /** Laesst die Safezone-Kuppel bei allen aufziehen, zerspringen oder zur Ruhe kommen. */
+    public static void sendSafeZoneShatter(MinecraftServer server,
+                                           SafeZoneShatterPayload.Stage stage) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(player, new SafeZoneShatterPayload(stage));
         }
     }
 

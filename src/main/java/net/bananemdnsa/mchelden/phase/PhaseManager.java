@@ -3,10 +3,14 @@ package net.bananemdnsa.mchelden.phase;
 import javax.annotation.Nullable;
 
 import net.bananemdnsa.mchelden.network.NetworkHandler;
+import net.bananemdnsa.mchelden.network.SafeZoneShatterPayload;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.text.HeldenText;
+import net.bananemdnsa.mchelden.world.BorderController;
 import net.bananemdnsa.mchelden.world.DividerWall;
+import net.bananemdnsa.mchelden.world.FinalWarBar;
+import net.bananemdnsa.mchelden.world.SafeZone;
 
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
@@ -44,9 +48,30 @@ public final class PhaseManager {
      */
     public static final int WALL_DROP_SECONDS = DividerWall.DROP_TICKS / 20;
 
+    /**
+     * Der Final War bekommt zehn Sekunden.
+     *
+     * <p>In dieser Zeit zieht das Gewitter auf und die Kuppel gluecht sich zum Bruch hoch.
+     * Fuenf Sekunden waeren zu wenig fuer beides — und anders als beim Wandfall haengt die
+     * Zahl an keiner Bewegung, die genau ankommen muss.
+     */
+    public static final int FINAL_WAR_SECONDS = 10;
+
+    /** Wie lange der Sturm nach dem Start noch steht: drei Minuten. */
+    private static final int STORM_TICKS = 3 * 60 * 20;
+
     @Nullable
     private static Phase pending;
     private static int ticksLeft;
+
+    /**
+     * Die Dauer, mit der die Border anlaeuft.
+     *
+     * <p>Ein Feld und kein Parameter von {@link #apply}, weil {@code phase set finalwar}
+     * und {@code phase next} denselben Weg nehmen und keine Dauer mitbringen. Ohne die
+     * Vorgabe gaebe es einen Weg in den Final War, der die Border nicht startet.
+     */
+    private static long durationMillis = BorderController.DEFAULT_DURATION_MILLIS;
 
     private PhaseManager() {
     }
@@ -60,10 +85,17 @@ public final class PhaseManager {
      * @return false, wenn die Phase schon anliegt
      */
     public static boolean begin(MinecraftServer server, Phase target) {
+        return begin(server, target, BorderController.DEFAULT_DURATION_MILLIS);
+    }
+
+    /** Wie oben, mit der Dauer, ueber die die Border spaeter schrumpft. */
+    public static boolean begin(MinecraftServer server, Phase target, long millis) {
         Phase current = GameState.get(server).getPhase();
         if (current == target) {
             return false;
         }
+
+        durationMillis = millis;
 
         if (target.ordinal() < current.ordinal()) {
             apply(server, target, false);
@@ -78,12 +110,24 @@ public final class PhaseManager {
         if (target == Phase.KRIEG && DividerWall.isUp(server)) {
             NetworkHandler.sendWallDrop(server, true);
         }
+
+        // Beim Final War genauso: der Sturm zieht auf und die Kuppel gluecht sich hoch,
+        // waehrend der Countdown laeuft. An seinem Ende steht der Bruch, nicht sein Beginn.
+        if (target == Phase.FINAL_WAR) {
+            raiseStorm(server);
+            NetworkHandler.sendSafeZoneShatter(server, SafeZoneShatterPayload.Stage.ARM);
+        }
+
         return true;
     }
 
-    /** Der Wall Drop braucht laenger als eine gewoehnliche Ansage. */
+    /** Wall Drop und Final War brauchen laenger als eine gewoehnliche Ansage. */
     private static int secondsFor(Phase target) {
-        return target == Phase.KRIEG ? WALL_DROP_SECONDS : COUNTDOWN_SECONDS;
+        return switch (target) {
+            case KRIEG -> WALL_DROP_SECONDS;
+            case FINAL_WAR -> FINAL_WAR_SECONDS;
+            default -> COUNTDOWN_SECONDS;
+        };
     }
 
     /** Die naechste Phase, oder {@code null}, wenn es keine mehr gibt. */
@@ -97,8 +141,22 @@ public final class PhaseManager {
         return pending != null;
     }
 
-    /** Bricht einen laufenden Countdown ab. */
-    public static void cancel() {
+    /**
+     * Bricht einen laufenden Countdown ab und nimmt zurueck, was schon angelaufen ist.
+     *
+     * <p>Ohne das Zuruecknehmen bliebe nach einem abgebrochenen Final-War-Countdown ein
+     * Sturm stehen und eine gluehende Kuppel, die nie zerbricht.
+     */
+    public static void cancel(MinecraftServer server) {
+        if (pending == Phase.KRIEG) {
+            NetworkHandler.sendWallDrop(server, false);
+        }
+
+        if (pending == Phase.FINAL_WAR) {
+            clearStorm(server);
+            NetworkHandler.sendSafeZoneShatter(server, SafeZoneShatterPayload.Stage.CANCEL);
+        }
+
         pending = null;
         ticksLeft = 0;
     }
@@ -152,6 +210,7 @@ public final class PhaseManager {
      * @param staged true fuer die volle Ansage, false fuer eine stille Korrektur
      */
     public static void apply(MinecraftServer server, Phase target, boolean staged) {
+        Phase previous = GameState.get(server).getPhase();
         GameState.get(server).setPhase(target);
 
         // Die Trennwand haengt an der Phase, ist aber ein eigener Schalter: `wall drop` und
@@ -160,6 +219,25 @@ public final class PhaseManager {
         DividerWall.setUp(server, target == Phase.AUFBAU);
         if (staged && target == Phase.KRIEG) {
             DividerWall.playForEveryone(server);
+        }
+
+        // Der Final War ist mehr als eine Zahl im Speicher: die Border laeuft an, die Kuppel
+        // zerbricht. Die Safezone selbst braucht nichts — sie fragt die Phase ab.
+        if (target == Phase.FINAL_WAR) {
+            BorderController.startFinalWar(server, durationMillis);
+            NetworkHandler.sendSafeZoneShatter(server, SafeZoneShatterPayload.Stage.BREAK);
+            SafeZone.burst(server);
+        } else if (previous == Phase.FINAL_WAR) {
+            // Nur beim Zuruecknehmen aus dem Final War heraus. Ein Wechsel von Aufbau nach
+            // Krieg darf ein von Hand gesetztes Border-Ziel nicht wegraeumen.
+            BorderController.reset(server);
+            clearStorm(server);
+            FinalWarBar.hide();
+
+            // Und die Truemmer raeumen: wer waehrend der fuenf Sekunden Scherbenflug
+            // zuruecknimmt, haette sonst eine Zone, die wieder gilt, aber noch als Bruch
+            // gezeichnet wird.
+            NetworkHandler.sendSafeZoneShatter(server, SafeZoneShatterPayload.Stage.CANCEL);
         }
 
         // Das Zeitlimit haengt an der Phase, nicht an einem Schalter. Der Sync bringt den
@@ -187,6 +265,12 @@ public final class PhaseManager {
             play(player, SoundEvents.ANVIL_LAND, 0.6f, 0.5f);
             play(player, SoundEvents.NOTE_BLOCK_BELL.value(), 1.2f, 0.5f);
             play(player, SoundEvents.TRIDENT_THUNDER.value(), 0.6f, 0.7f);
+
+            // Der Final War bekommt einen Einschlag obendrauf: er ist neben der Bossbar der
+            // einzige Beat, den wirklich jeder mitbekommt, egal wo er steht.
+            if (target == Phase.FINAL_WAR) {
+                play(player, SoundEvents.LIGHTNING_BOLT_THUNDER, 1.0f, 0.8f);
+            }
         }
 
         server.getPlayerList().broadcastSystemMessage(
@@ -195,5 +279,25 @@ public final class PhaseManager {
 
     private static void play(ServerPlayer player, SoundEvent sound, float volume, float pitch) {
         player.playNotifySound(sound, SoundSource.MASTER, volume, pitch);
+    }
+
+    /**
+     * Laesst weltweit ein Gewitter losbrechen.
+     *
+     * <p>Der einzige Beat, den zwanzig ueber 2000 mal 2000 verteilte Spieler gleichzeitig
+     * <em>sehen</em>. Die Kuppel sieht nur, wer bei 0,0 steht — dasselbe Problem wie bei
+     * der verworfenen Welle aus Etappe 7, nur ohne Loesung: ein Zylinder mit fuenfzig
+     * Bloecken Radius laesst sich nicht so inszenieren, dass ihn die ganze Welt sieht.
+     *
+     * <p>Nach drei Minuten laeuft die Wetterzeit ab und Vanilla wuerfelt neu: der Sturm
+     * markiert den Moment und geht dann. Ueber zwei Stunden waere Regen nur noch
+     * Sichtbehinderung im PvP.
+     */
+    private static void raiseStorm(MinecraftServer server) {
+        server.overworld().setWeatherParameters(0, STORM_TICKS, true, true);
+    }
+
+    private static void clearStorm(MinecraftServer server) {
+        server.overworld().setWeatherParameters(STORM_TICKS, 0, false, false);
     }
 }

@@ -9,6 +9,8 @@ import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 
+import net.bananemdnsa.mchelden.client.ClientState;
+import net.bananemdnsa.mchelden.phase.PhaseManager;
 import net.bananemdnsa.mchelden.world.SafeZone;
 
 import net.minecraft.Util;
@@ -87,6 +89,15 @@ public final class SafeZoneRenderer {
                 SafeZone.isActive(minecraft.level) ? "aktiv" : "aus",
                 toAxis, toWall, alpha,
                 toAxis <= SafeZone.RADIUS ? "du bist drin" : "du bist draussen")));
+
+        // Der Bruch ist der Teil, den nur der Client kennt. Bleibt der Bildschirm leer,
+        // unterscheidet diese Zeile die Ursachen: kein Paket angekommen, Uhr schon
+        // abgelaufen, oder Zone abgeschaltet ohne dass ein Bruch lief.
+        minecraft.player.sendSystemMessage(Component.literal(String.format(
+                "Kuppel: Aufziehen %s | Bruch %s | Gluehen %.2f",
+                ticksOrDash(ClientState.safeZoneArmTicks()),
+                ticksOrDash(ClientState.safeZoneShatterTicks()),
+                armGlow())));
     }
 
     public static void render(RenderLevelStageEvent event) {
@@ -95,7 +106,15 @@ public final class SafeZoneRenderer {
         }
 
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level == null || !SafeZone.isActive(minecraft.level)) {
+        if (minecraft.level == null) {
+            return;
+        }
+
+        int shatterTicks = ClientState.safeZoneShatterTicks();
+
+        // Waehrend des Bruchs gilt die Zone schon als abgeschaltet — der Schutz endet mit
+        // dem Bruch, nicht mit der letzten Scherbe. Gezeichnet wird trotzdem weiter.
+        if (!SafeZone.isActive(minecraft.level) && shatterTicks < 0) {
             return;
         }
 
@@ -112,11 +131,17 @@ public final class SafeZoneRenderer {
             return;
         }
 
-        draw(minecraft, eye, (float) Mth.clamp(Math.pow(closeness, 4.0), 0.0, 1.0));
+        draw(minecraft, eye, (float) Mth.clamp(Math.pow(closeness, 4.0), 0.0, 1.0),
+                shatterTicks, event.getPartialTick().getGameTimeDeltaPartialTick(false));
     }
 
-    private static void draw(Minecraft minecraft, Vec3 eye, float alpha) {
+    private static void draw(Minecraft minecraft, Vec3 eye, float alpha,
+                             int shatterTicks, float partial) {
         double far = minecraft.gameRenderer.getDepthFar();
+
+        // Beim Aufziehen gluecht die Wand von tuerkis auf weiss — dieselbe Machart wie beim
+        // Absinken der Trennwand. Sie sagt an, was gleich passiert.
+        float glow = armGlow();
 
         RenderSystem.enableBlend();
         RenderSystem.enableDepthTest();
@@ -125,7 +150,8 @@ public final class SafeZoneRenderer {
                 GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
         RenderSystem.setShaderTexture(0, FORCEFIELD);
         RenderSystem.depthMask(Minecraft.useShaderTransparency());
-        RenderSystem.setShaderColor(RED, GREEN, BLUE, alpha);
+        RenderSystem.setShaderColor(
+                Mth.lerp(glow, RED, 1.0f), GREEN, Mth.lerp(glow, BLUE, 1.0f), alpha);
         RenderSystem.setShader(GameRenderer::getPositionTexShader);
 
         RenderSystem.polygonOffset(-3.0f, -3.0f);
@@ -135,7 +161,16 @@ public final class SafeZoneRenderer {
         // draussen, wenn man zuschaut.
         RenderSystem.disableCull();
 
-        MeshData mesh = buildRing(eye, far);
+        BufferBuilder buffer = Tesselator.getInstance()
+                .begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+
+        if (shatterTicks >= 0) {
+            SafeZoneShatter.build(buffer, eye, shatterTicks, partial);
+        } else {
+            buildRing(buffer, eye, far);
+        }
+
+        MeshData mesh = buffer.build();
         if (mesh != null) {
             BufferUploader.drawWithShader(mesh);
         }
@@ -149,6 +184,20 @@ public final class SafeZoneRenderer {
         RenderSystem.depthMask(true);
     }
 
+    /** {@code -1} heisst: laeuft gerade nicht. Als Strich liest sich das schneller. */
+    private static String ticksOrDash(int ticks) {
+        return ticks < 0 ? "—" : ticks + " Ticks";
+    }
+
+    /** Wie weit die Wand ins Weisse gluecht: 0 im Ruhezustand, 1 im Moment vor dem Bruch. */
+    private static float armGlow() {
+        int arm = ClientState.safeZoneArmTicks();
+        if (arm < 0) {
+            return 0.0f;
+        }
+        return Mth.clamp(arm / (float) (PhaseManager.FINAL_WAR_SECONDS * 20), 0.0f, 1.0f);
+    }
+
     /**
      * Baut die runde Wand, kameranah gerechnet.
      *
@@ -156,10 +205,7 @@ public final class SafeZoneRenderer {
      * Muster bei einem groesseren Radius gedehnt. Waagerecht und senkrecht dieselbe Dichte
      * wie bei der Trennwand, damit die drei Flaechen im Spiel zusammenpassen.
      */
-    private static MeshData buildRing(Vec3 eye, double far) {
-        BufferBuilder buffer = Tesselator.getInstance()
-                .begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
-
+    private static void buildRing(BufferBuilder buffer, Vec3 eye, double far) {
         float scroll = (float) (Util.getMillis() % SCROLL_PERIOD) / SCROLL_PERIOD;
         float top = (float) -Mth.frac(eye.y * 0.5);
         float bottom = top + (float) far;
@@ -181,8 +227,6 @@ public final class SafeZoneRenderer {
             buffer.addVertex(rightX, (float) far, rightZ).setUv(uRight, scroll + top);
             buffer.addVertex(leftX, (float) far, leftZ).setUv(uLeft, scroll + top);
         }
-
-        return buffer.build();
     }
 
     private static float angle(int segment) {

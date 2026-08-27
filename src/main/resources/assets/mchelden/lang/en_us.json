@@ -93,5 +93,14 @@
   "mchelden.wall.blocked": "Nothing works beyond the dividing wall",
   "mchelden.safezone.entered": "Safe zone - nobody attacks here.",
   "mchelden.safezone.left": "Left the safe zone.",
-  "mchelden.safezone.denied": "You cannot enter the safe zone while fighting."
+  "mchelden.safezone.denied": "You cannot enter the safe zone while fighting.",
+  "mchelden.finalwar.bar": "Final War · Border stops in %s",
+  "mchelden.finalwar.bar.done": "Final War · The border has stopped",
+  "mchelden.command.finalwar.starting": "Final War is starting - %s",
+  "mchelden.command.finalwar.already": "The Final War is already running",
+  "mchelden.command.finalwar.notrunning": "No Final War is running",
+  "mchelden.command.finalwar.stopped": "Final War stopped, border reset",
+  "mchelden.command.border.shrinking": "Border shrinking to %s blocks - %s",
+  "mchelden.command.border.reset": "Border back to %s blocks",
+  "mchelden.command.duration.invalid": "Cannot read that duration. Like this: 2h30m, 150m, 2h, 90s"
 }

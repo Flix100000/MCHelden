@@ -93,5 +93,14 @@
   "mchelden.wall.blocked": "Jenseits der Trennwand geht nichts",
   "mchelden.safezone.entered": "Safezone — hier greift niemand an.",
   "mchelden.safezone.left": "Safezone verlassen.",
-  "mchelden.safezone.denied": "Im Kampf kommst du nicht in die Safezone."
+  "mchelden.safezone.denied": "Im Kampf kommst du nicht in die Safezone.",
+  "mchelden.finalwar.bar": "Final War · Border stoppt in %s",
+  "mchelden.finalwar.bar.done": "Final War · Die Border steht",
+  "mchelden.command.finalwar.starting": "Final War wird eingeleitet — %s",
+  "mchelden.command.finalwar.already": "Der Final War läuft schon",
+  "mchelden.command.finalwar.notrunning": "Es läuft kein Final War",
+  "mchelden.command.finalwar.stopped": "Final War abgebrochen, Border zurückgesetzt",
+  "mchelden.command.border.shrinking": "Border schrumpft auf %s Blöcke — %s",
+  "mchelden.command.border.reset": "Border zurück auf %s Blöcke",
+  "mchelden.command.duration.invalid": "Dauer nicht lesbar. So geht es: 2h30m, 150m, 2h, 90s"
 }

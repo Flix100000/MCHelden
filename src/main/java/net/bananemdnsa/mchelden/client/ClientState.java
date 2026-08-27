@@ -61,6 +61,16 @@ public final class ClientState {
     /** Ab hier ist jede erreichbare Welt durchgebrochen. */
     private static final int WALL_DROP_MAX_TICKS = 2000;
 
+    /**
+     * Wie lange die Kuppel schon aufzieht, beziehungsweise schon zerbricht.
+     *
+     * <p>Getrennte Uhren, weil es zwei Vorgaenge sind: das Gluehen laeuft im Countdown und
+     * kann abgebrochen werden, der Bruch laeuft danach und ist endgueltig. {@code -1} heisst
+     * jeweils: passiert gerade nicht.
+     */
+    private static int safeZoneArmTicks = -1;
+    private static int safeZoneShatterTicks = -1;
+
     /** Wie lange der Rahmen des Kastens aufleuchtet, wenn ein Ziel ankommt. */
     public static final int BOUNTY_APPEAR_TICKS = 10;
     /** Wie lange der Balken ueber einem ausgeschiedenen Ziel einfaehrt. */
@@ -187,6 +197,40 @@ public final class ClientState {
     public static void onWallDrop(boolean dropping) {
         wallDropTicks = dropping ? 0 : -1;
         DividerWall.setClientEdge(Double.MAX_VALUE);
+    }
+
+    /**
+     * Die Kuppel zieht auf, zerspringt oder kommt wieder zur Ruhe.
+     *
+     * <p>Der Abbruch wird gebraucht, wenn ein Op den Phasenwechsel im Countdown
+     * zuruecknimmt: sonst bliebe eine gluehende Kuppel stehen, die nie zerbricht.
+     */
+    public static void onSafeZoneShatter(
+            net.bananemdnsa.mchelden.network.SafeZoneShatterPayload.Stage stage) {
+        switch (stage) {
+            case ARM -> {
+                safeZoneArmTicks = 0;
+                safeZoneShatterTicks = -1;
+            }
+            case BREAK -> {
+                safeZoneArmTicks = -1;
+                safeZoneShatterTicks = 0;
+            }
+            case CANCEL -> {
+                safeZoneArmTicks = -1;
+                safeZoneShatterTicks = -1;
+            }
+        }
+    }
+
+    /** Wie lange die Kuppel schon aufzieht, oder -1. */
+    public static int safeZoneArmTicks() {
+        return safeZoneArmTicks;
+    }
+
+    /** Wie lange die Kuppel schon zerbricht, oder -1. */
+    public static int safeZoneShatterTicks() {
+        return safeZoneShatterTicks;
     }
 
     /**
@@ -321,6 +365,15 @@ public final class ClientState {
             wallDropTicks++;
         }
 
+        if (safeZoneArmTicks >= 0) {
+            safeZoneArmTicks++;
+        }
+
+        if (safeZoneShatterTicks >= 0 && ++safeZoneShatterTicks
+                > net.bananemdnsa.mchelden.client.render.SafeZoneShatter.TOTAL_TICKS) {
+            safeZoneShatterTicks = -1;
+        }
+
         // Die Kollision liest denselben Wert wie der Renderer, sonst steht man vor einer
         // abgesunkenen Wand, durch die man trotzdem nicht hindurchkommt.
         DividerWall.setClientEdge(wallEdge(0f));
@@ -427,6 +480,8 @@ public final class ClientState {
         phase = Phase.AUFBAU;
         wallUp = true;
         wallDropTicks = -1;
+        safeZoneArmTicks = -1;
+        safeZoneShatterTicks = -1;
         DividerWall.setClientEdge(Double.MAX_VALUE);
         lossTicks = 0;
         combatTicks = 0;

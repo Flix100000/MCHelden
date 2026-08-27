@@ -11,15 +11,21 @@ import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.text.HeldenText;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
@@ -71,6 +77,47 @@ public final class SafeZone {
     private static final double REACH = 8.0;
     /** Wie weit das Ergebnis notfalls vor die Grenze gesetzt wird. */
     private static final double EDGE_GAP = 0.001;
+
+    /** Wie viele Punkte auf dem Ring beim Bruch Funken schlagen, und wie dicht. */
+    private static final int BURST_POINTS = 64;
+    private static final int BURST_PER_POINT = 10;
+    private static final double BURST_SPREAD_Y = 24.0;
+
+    /**
+     * Wie lange nach dem Bruch noch Staub und Funken nachkommen.
+     *
+     * <p>Muss zur Scherbenanimation auf dem Client passen: die laeuft zehn Sekunden, und
+     * ein einziger Schlag Partikel am Anfang liesse die Truemmer die letzten acht davon
+     * durch eine leere Luft fallen. Die Zahl steht hier doppelt und nicht als Verweis —
+     * die Client-Klasse zieht Zeichencode nach, der auf einem Server nicht geladen wird.
+     */
+    private static final int BURST_TICKS = 200;
+
+    /** Nur jeder zweite Tick streut nach; zwanzigmal pro Sekunde waere Nebel. */
+    private static final int BURST_GAP = 2;
+
+    /** Wie weit die Staubwolke bis zum Ende absinkt, in Bloecken. */
+    private static final double BURST_FALL = 40.0;
+
+    /** Wie viele Blitze beim Bruch um jeden Spieler einschlagen, und wie weit weg. */
+    private static final int BOLTS_PER_PLAYER = 5;
+    private static final double BOLT_RANGE = 22.0;
+    private static final double BOLT_MIN = 6.0;
+
+    /** Wie lange die Blitze sich verteilen: nicht alle im selben Tick. */
+    private static final int BOLT_TICKS = 40;
+
+    /** Laeuft der Nachschlag gerade, und seit wann? {@code -1} heisst: nein. */
+    private static int burstTicks = -1;
+
+    /**
+     * Wie nah jemand sein muss, um die Funken geschickt zu bekommen.
+     *
+     * <p>Mit gesetztem Fernflag wuerde sonst auch jemand achthundert Bloecke entfernt ein
+     * Glitzern am Horizont sehen, ohne zu wissen wovon — und zwanzig Spieler mal
+     * achtundvierzig Punkte waeren tausend Pakete in einem Tick.
+     */
+    private static final double BURST_RANGE = 200.0;
 
     private SafeZone() {
     }
@@ -330,6 +377,146 @@ public final class SafeZone {
         if (distance < RADIUS + DENIAL_RANGE) {
             player.displayClientMessage(HeldenText.safeZoneDenied(), true);
         }
+    }
+
+    /**
+     * Streut Funken entlang der Wand, im Moment des Bruchs.
+     *
+     * <p>Die Scherben sind gezeichnete Flaechen; erst die Partikel machen daraus einen
+     * Bruch.
+     *
+     * <p>Verschickt einzeln an jeden Spieler und mit gesetztem Fernflag, nicht ueber den
+     * bequemen Weg an die Welt: der erreicht nur Spieler im Umkreis von zweiunddreissig
+     * Bloecken um die Partikelposition. Bei einem Ring mit fuenfzig Bloecken Radius bekaeme
+     * jemand in der Mitte von der halben Wand nichts zu sehen — genau der Fehler, der in
+     * Etappe 7 die Partikelwelle unsichtbar gemacht hat.
+     */
+    public static void burst(MinecraftServer server) {
+        burstTicks = 0;
+        scatter(server, 1.0f, 0.0);
+    }
+
+    /**
+     * Laesst Staub, Funken und Blitze nach dem Bruch nachkommen. Aus dem Servertick.
+     *
+     * <p>Der Bruch ist kein Bild, sondern zehn Sekunden. Ein einziger Schlag Partikel am
+     * Anfang liesse die Scherben den Rest der Zeit durch leere Luft fallen.
+     *
+     * <p>Die Wolke sinkt dabei mit — sonst haengt der Staub oben, waehrend die Truemmer
+     * unten liegen.
+     */
+    public static void tickBurst(MinecraftServer server) {
+        if (burstTicks < 0) {
+            return;
+        }
+
+        if (++burstTicks > BURST_TICKS) {
+            burstTicks = -1;
+            return;
+        }
+
+        float t = burstTicks / (float) BURST_TICKS;
+
+        // Die Blitze bleiben auf die erste Sekunden begrenzt: sie gehoeren zum Einschlag,
+        // nicht zum Nachrieseln.
+        if (burstTicks <= BOLT_TICKS && burstTicks % (BOLT_TICKS / BOLTS_PER_PLAYER) == 0) {
+            strikeAround(server);
+        }
+
+        if (burstTicks % BURST_GAP != 0) {
+            return;
+        }
+
+        // Duennt aus, statt hart aufzuhoeren.
+        scatter(server, 1.0f - t, BURST_FALL * t * t);
+    }
+
+    /**
+     * Streut Funken entlang der Wand.
+     *
+     * <p>Verschickt einzeln an jeden Spieler und mit gesetztem Fernflag, nicht ueber den
+     * bequemen Weg an die Welt: der erreicht nur Spieler im Umkreis von zweiunddreissig
+     * Bloecken um die Partikelposition. Bei einem Ring mit fuenfzig Bloecken Radius bekaeme
+     * jemand in der Mitte von der halben Wand nichts zu sehen — genau der Fehler, der in
+     * Etappe 7 die Partikelwelle unsichtbar gemacht hat.
+     *
+     * @param strength 1 beim Bruch, gegen 0 am Ende
+     * @param drop wie weit die Wolke inzwischen abgesunken ist
+     */
+    private static void scatter(MinecraftServer server, float strength, double drop) {
+        if (strength <= 0.0f) {
+            return;
+        }
+
+        ServerLevel level = server.overworld();
+        int count = Math.max(1, Math.round(BURST_PER_POINT * strength));
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (!nearZone(player)) {
+                continue;
+            }
+
+            // Auf Augenhoehe des Empfaengers, damit jeder seinen Ausschnitt der Wand
+            // brechen sieht statt eines Rings am Boden.
+            double y = player.getY() - drop;
+
+            for (int i = 0; i < BURST_POINTS; i++) {
+                double angle = 2.0 * Math.PI * i / BURST_POINTS;
+                double x = Math.cos(angle) * RADIUS;
+                double z = Math.sin(angle) * RADIUS;
+
+                level.sendParticles(player, ParticleTypes.END_ROD, true,
+                        x, y, z, count, 0.4, BURST_SPREAD_Y, 0.4, 0.05);
+                level.sendParticles(player, ParticleTypes.ELECTRIC_SPARK, true,
+                        x, y, z, Math.max(1, count / 2), 0.4, BURST_SPREAD_Y, 0.4, 0.1);
+                level.sendParticles(player, ParticleTypes.LARGE_SMOKE, true,
+                        x, y, z, Math.max(1, count / 3), 0.6, BURST_SPREAD_Y, 0.6, 0.01);
+            }
+        }
+    }
+
+    /**
+     * Laesst Blitze um jeden Spieler einschlagen.
+     *
+     * <p><b>Nur zum Ansehen.</b> Ein echter Blitz zuendet den Wald an und toetet den, der
+     * darunter steht — der Final War beginnt mit einem Schauspiel, nicht mit einem Toten
+     * und einem Waldbrand.
+     *
+     * <p>Nicht direkt auf den Spieler, sondern in einem Ring um ihn herum: einen Blitz auf
+     * dem eigenen Kopf liest niemand als Inszenierung.
+     */
+    private static void strikeAround(MinecraftServer server) {
+        ServerLevel level = server.overworld();
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            double angle = level.random.nextDouble() * 2.0 * Math.PI;
+            double distance = BOLT_MIN + level.random.nextDouble() * (BOLT_RANGE - BOLT_MIN);
+
+            double x = player.getX() + Math.cos(angle) * distance;
+            double z = player.getZ() + Math.sin(angle) * distance;
+
+            // getHeightmapPos laedt keine Chunks nach und liefert fuer ungeladene die
+            // Weltuntergrenze — der Fehler aus Etappe 7. Hier ist er ungefaehrlich: der
+            // Einschlag liegt in Sichtweite eines Spielers, der Chunk ist also geladen.
+            BlockPos ground = level.getHeightmapPos(
+                    Heightmap.Types.MOTION_BLOCKING, BlockPos.containing(x, player.getY(), z));
+
+            LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
+            if (bolt == null) {
+                continue;
+            }
+
+            bolt.moveTo(Vec3.atBottomCenterOf(ground));
+            bolt.setVisualOnly(true);
+            level.addFreshEntity(bolt);
+        }
+    }
+
+    private static boolean nearZone(ServerPlayer player) {
+        double x = player.getX();
+        double z = player.getZ();
+        double limit = RADIUS + BURST_RANGE;
+        return x * x + z * z <= limit * limit;
     }
 
     /** Beim Verlassen der Welt aufraeumen. */

@@ -47,6 +47,27 @@ class GameStateTest {
         assertEquals(Phase.AUFBAU, new GameState().getPhase());
     }
 
+    /**
+     * Der Border-Schalter ist der Grund, warum ein Neustart mitten im Final War die Arena
+     * nicht zurueckwirft. Ueberlebt er die Speicherrunde nicht, setzt die Mod bei jedem
+     * Start die Border erneut auf 2000 — und zwei Stunden Schrumpfen waeren weg.
+     */
+    @Test
+    void borderSchalterUeberlebtDieSpeicherrunde() {
+        GameState state = new GameState();
+        state.setBorderSet(true);
+
+        CompoundTag tag = state.save(new CompoundTag(), null);
+
+        assertTrue(GameState.load(tag, null).isBorderSet());
+    }
+
+    /** Ohne Eintrag gilt: noch nicht gesetzt. Bestehende Welten bekommen ihre Border damit. */
+    @Test
+    void ohneEintragGiltDieBorderAlsUngesetzt() {
+        assertFalse(GameState.load(new CompoundTag(), null).isBorderSet());
+    }
+
     @Test
     void unbekannteIdFaelltAufAufbauZurueck() {
         assertEquals(Phase.AUFBAU, Phase.byId("gibtsnicht"));

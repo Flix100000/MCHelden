@@ -28,7 +28,10 @@ import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.Side;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
+import net.bananemdnsa.mchelden.text.DurationText;
 import net.bananemdnsa.mchelden.text.HeldenText;
+import net.bananemdnsa.mchelden.world.BorderController;
+import net.bananemdnsa.mchelden.world.BorderStorm;
 import net.bananemdnsa.mchelden.world.DividerWall;
 import net.bananemdnsa.mchelden.world.SafeZone;
 
@@ -41,6 +44,8 @@ import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.border.BorderStatus;
+import net.minecraft.world.level.border.WorldBorder;
 
 public final class HeldenCommand {
     /** Obergrenze fuer die Zeit-Commands. Zehn Stunden sind reichlich und fangen Vertipper ab. */
@@ -122,6 +127,8 @@ public final class HeldenCommand {
                                 .executes(context -> debugPlaytime(context.getSource())))
                         .then(Commands.literal("render")
                                 .executes(context -> debugRender(context.getSource())))
+                        .then(Commands.literal("border")
+                                .executes(context -> debugBorder(context.getSource())))
                         .then(Commands.literal("death")
                                 .executes(context -> debugDeath(context.getSource())))
                         .then(Commands.literal("animation")
@@ -143,6 +150,26 @@ public final class HeldenCommand {
                                 .executes(context -> wall(context.getSource(), false)))
                         .then(Commands.literal("raise")
                                 .executes(context -> wall(context.getSource(), true))))
+                .then(Commands.literal("finalwar")
+                        .then(Commands.literal("start")
+                                .executes(context -> finalWarStart(context.getSource(), null))
+                                .then(Commands.argument("dauer", StringArgumentType.word())
+                                        .executes(context -> finalWarStart(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "dauer")))))
+                        .then(Commands.literal("stop")
+                                .executes(context -> finalWarStop(context.getSource()))))
+                .then(Commands.literal("border")
+                        .then(Commands.literal("shrink")
+                                .then(Commands.argument("groesse", IntegerArgumentType.integer(
+                                                16, (int) BorderController.START_SIZE))
+                                        .then(Commands.argument("dauer", StringArgumentType.word())
+                                                .executes(context -> borderShrink(
+                                                        context.getSource(),
+                                                        IntegerArgumentType.getInteger(context, "groesse"),
+                                                        StringArgumentType.getString(context, "dauer"))))))
+                        .then(Commands.literal("reset")
+                                .executes(context -> borderReset(context.getSource()))))
                 .then(Commands.literal("time")
                         .then(Commands.literal("check")
                                 .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
@@ -561,6 +588,116 @@ public final class HeldenCommand {
         DividerWall.setUp(server, up);
         server.getPlayerList().broadcastSystemMessage(
                 up ? HeldenText.wallRaised() : HeldenText.wallDropped(), false);
+        return 1;
+    }
+
+    /**
+     * Sagt, warum an der Border etwas passiert — oder eben nicht.
+     *
+     * <p>Drei Bedingungen koennen den Effekt abwuergen, und von aussen sehen alle drei
+     * gleich aus: die Border bewegt sich gar nicht, man steht zu weit von der Kante weg,
+     * oder sie laeuft in die falsche Richtung. Diese Zeile unterscheidet sie.
+     *
+     * <p>Sie nennt dieselbe Zahl, nach der sich der Effekt richtet, statt einer zweiten
+     * Rechnung daneben — sonst diagnostiziert man irgendwann die Diagnose.
+     */
+    private static int debugBorder(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        WorldBorder border = source.getServer().overworld().getWorldBorder();
+
+        double toEdge = BorderStorm.distanceToEdge(border, player.getX(), player.getZ());
+        float heat = BorderStorm.heat(toEdge);
+
+        source.sendSuccess(() -> Component.literal(String.format(
+                "Border: %.0f breit | %s | Ziel %.0f | Restzeit %s",
+                border.getSize(), border.getStatus(), border.getLerpTarget(),
+                DurationText.clock(border.getLerpRemainingTime()))), false);
+
+        // Die Ecken ausschreiben, statt sie aus Mittelpunkt und Groesse im Kopf auszurechnen.
+        source.sendSuccess(() -> Component.literal(String.format(
+                "Ecken: %.0f/%.0f bis %.0f/%.0f",
+                border.getMinX(), border.getMinZ(), border.getMaxX(), border.getMaxZ())), false);
+
+        source.sendSuccess(() -> Component.literal(String.format(
+                "Kante: %.1f Bloecke weg | Staerke %.2f | %s",
+                toEdge, heat,
+                border.getStatus() != BorderStatus.SHRINKING
+                        ? "sie schrumpft nicht, deswegen ist es still"
+                        : heat <= 0.0f
+                                ? "zu weit weg, es passiert nichts"
+                                : BorderStorm.strikes(toEdge)
+                                        ? "Funken und Einschlaege"
+                                        : "nur Funken")), false);
+        return 1;
+    }
+
+    /**
+     * Startet den Final War.
+     *
+     * <p>Ohne Dauer gilt die Vorgabe von zweieinhalb Stunden. Der Weg geht durch den
+     * {@link PhaseManager}, damit Countdown, Sturm, Kuppel und Border ein Vorgang bleiben
+     * und nicht vier.
+     */
+    private static int finalWarStart(CommandSourceStack source, @Nullable String duration) {
+        long millis = BorderController.DEFAULT_DURATION_MILLIS;
+
+        if (duration != null) {
+            millis = DurationText.parseMillis(duration);
+            if (millis == DurationText.INVALID) {
+                source.sendFailure(HeldenText.durationInvalid());
+                return 0;
+            }
+        }
+
+        if (!PhaseManager.begin(source.getServer(), Phase.FINAL_WAR, millis)) {
+            source.sendFailure(HeldenText.finalWarAlready());
+            return 0;
+        }
+
+        String shown = DurationText.clock(millis);
+        source.sendSuccess(() -> HeldenText.finalWarStarting(shown), true);
+        return 1;
+    }
+
+    /**
+     * Nimmt den Final War zurueck — auch mitten im Countdown.
+     *
+     * <p>Der {@code cancel} davor ist kein Beiwerk: ohne ihn liefe ein angefangener
+     * Countdown weiter und schaltete Sekunden spaeter doch noch in den Final War.
+     */
+    private static int finalWarStop(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+        boolean running = GameState.get(server).getPhase() == Phase.FINAL_WAR
+                || PhaseManager.isCountingDown();
+
+        if (!running) {
+            source.sendFailure(HeldenText.finalWarNotRunning());
+            return 0;
+        }
+
+        PhaseManager.cancel(server);
+        PhaseManager.apply(server, Phase.KRIEG, false);
+        source.sendSuccess(HeldenText::finalWarStopped, true);
+        return 1;
+    }
+
+    /** Das nackte Werkzeug: schrumpft, ohne Phase und ohne Bossbar. */
+    private static int borderShrink(CommandSourceStack source, int size, String duration) {
+        long millis = DurationText.parseMillis(duration);
+        if (millis == DurationText.INVALID) {
+            source.sendFailure(HeldenText.durationInvalid());
+            return 0;
+        }
+
+        BorderController.shrink(source.getServer(), size, millis);
+        String shown = DurationText.clock(millis);
+        source.sendSuccess(() -> HeldenText.borderShrinking(size, shown), true);
+        return 1;
+    }
+
+    private static int borderReset(CommandSourceStack source) {
+        BorderController.reset(source.getServer());
+        source.sendSuccess(() -> HeldenText.borderReset((int) BorderController.START_SIZE), true);
         return 1;
     }
 

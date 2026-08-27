@@ -312,4 +312,54 @@ public final class HeldenText {
                 .append(Component.translatable("mchelden.command.info.playtime.left", duration)
                         .withStyle(ChatFormatting.WHITE));
     }
+
+    /**
+     * Die Beschriftung der Bossbar.
+     *
+     * <p>Nur die Restzeit. Die Groesse steht schon im Balken daneben — sie als Zahl zu
+     * wiederholen sagt nichts dazu, was der Balken nicht schon zeigt.
+     *
+     * <p>Die Zeit kommt jeden Tick frisch aus der Border. Steht sie, waere eine Restzeit
+     * von 0:00 gelogen — dann sagt die Zeile stattdessen, dass die Arena steht.
+     */
+    public static Component finalWarBar(long remainingMillis) {
+        return remainingMillis <= 0L
+                ? Component.translatable("mchelden.finalwar.bar.done")
+                : Component.translatable("mchelden.finalwar.bar",
+                        DurationText.clock(remainingMillis));
+    }
+
+    public static Component finalWarStarting(String duration) {
+        return Component.translatable("mchelden.command.finalwar.starting", duration)
+                .withStyle(ChatFormatting.RED);
+    }
+
+    public static Component finalWarAlready() {
+        return Component.translatable("mchelden.command.finalwar.already");
+    }
+
+    public static Component finalWarNotRunning() {
+        return Component.translatable("mchelden.command.finalwar.notrunning");
+    }
+
+    public static Component finalWarStopped() {
+        return Component.translatable("mchelden.command.finalwar.stopped")
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component borderShrinking(int blocks, String duration) {
+        return Component.translatable("mchelden.command.border.shrinking", blocks, duration)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component borderReset(int blocks) {
+        return Component.translatable("mchelden.command.border.reset", blocks)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Nennt Beispiele statt einer Grammatik — die liest ohnehin niemand. */
+    public static Component durationInvalid() {
+        return Component.translatable("mchelden.command.duration.invalid")
+                .withStyle(ChatFormatting.RED);
+    }
 }

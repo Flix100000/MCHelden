@@ -19,6 +19,7 @@ import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
+import net.bananemdnsa.mchelden.world.BorderController;
 import net.bananemdnsa.mchelden.world.DividerWall;
 import net.bananemdnsa.mchelden.world.SafeZone;
 import net.bananemdnsa.mchelden.world.SpawnPlacer;
@@ -31,6 +32,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
@@ -50,6 +52,7 @@ public class MCHelden {
         modEventBus.addListener(this::registerPayloads);
 
         NeoForge.EVENT_BUS.addListener(this::registerCommands);
+        NeoForge.EVENT_BUS.addListener(this::onServerStarted);
         NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
         NeoForge.EVENT_BUS.addListener(HeartEvents::onRespawn);
         NeoForge.EVENT_BUS.addListener(CombatEvents::onIncomingDamage);
@@ -84,6 +87,16 @@ public class MCHelden {
 
     private void registerCommands(RegisterCommandsEvent event) {
         HeldenCommand.register(event.getDispatcher());
+    }
+
+    /**
+     * Setzt der Welt beim allerersten Start ihre Border.
+     *
+     * <p>Steht hier und nicht beim Weltwechsel: die Border gehoert zur Welt, nicht zu einer
+     * Phase, und eine frische Welt haette sonst die Vanilla-Grenze von sechzig Millionen.
+     */
+    private void onServerStarted(ServerStartedEvent event) {
+        BorderController.initialise(event.getServer());
     }
 
     /** Legt beim ersten Join den Zustand an, weist Ausgeschiedene ab, synct den Rest. */
