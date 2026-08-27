@@ -93,6 +93,39 @@ public final class BorderController {
         return Math.max(0L, border(server).getLerpRemainingTime());
     }
 
+    /**
+     * Abstand, den eine hereingeholte Position zur Kante behaelt.
+     *
+     * <p>Direkt auf der Kante stuende man im Warnbereich und naehme beim naechsten
+     * Schrumpfschritt sofort Schaden — gerettet und trotzdem am Sterben.
+     */
+    public static final double RESCUE_MARGIN = 8.0;
+
+    /** Liegt dieser Punkt ausserhalb der Border? */
+    public static boolean isOutside(WorldBorder border, double x, double z) {
+        return x < border.getMinX() || x > border.getMaxX()
+                || z < border.getMinZ() || z > border.getMaxZ();
+    }
+
+    /**
+     * Klemmt eine Position waagerecht in die Border, mit Abstand zur Kante.
+     *
+     * <p>Reine Rechnung, damit sie ohne Spielstart pruefbar ist. Die Hoehe bleibt aussen
+     * vor: der Boden wird danach gesucht, und eine Border kennt ohnehin kein Oben.
+     *
+     * <p>Der Abstand wird gedeckelt, damit eine winzige Border die Klammer nicht umdreht —
+     * sonst laege die untere Grenze ueber der oberen und das Ergebnis ausserhalb.
+     *
+     * @return die erlaubte Position als {@code {x, z}}
+     */
+    public static double[] clampInside(WorldBorder border, double x, double z) {
+        double margin = Math.max(0.0, Math.min(RESCUE_MARGIN, border.getSize() / 2.0 - 1.0));
+
+        return new double[] {
+                Mth.clamp(x, border.getMinX() + margin, border.getMaxX() - margin),
+                Mth.clamp(z, border.getMinZ() + margin, border.getMaxZ() - margin)};
+    }
+
     private static WorldBorder border(MinecraftServer server) {
         return server.overworld().getWorldBorder();
     }
