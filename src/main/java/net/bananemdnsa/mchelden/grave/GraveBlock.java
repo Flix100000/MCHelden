@@ -125,6 +125,12 @@ public class GraveBlock extends BaseEntityBlock {
                 ExperienceOrb.award(serverLevel, Vec3.atCenterOf(pos), grave.getStoredXp());
             }
         }
+        // Austragen auf jedem Weg, der den Block entfernt: abgebaut, geleert, abgeraeumt.
+        // Ein Eintrag ohne Block waere harmlos, aber er wuerde sich ansammeln.
+        if (!state.is(newState.getBlock()) && level instanceof ServerLevel serverLevel) {
+            GraveRegistry.get(serverLevel.getServer()).remove(pos);
+        }
+
         super.onRemove(state, level, pos, newState, movedByPiston);
     }
 

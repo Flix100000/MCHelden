@@ -129,6 +129,10 @@ public final class GraveEvents {
         if (level.getBlockEntity(pos) instanceof GraveBlockEntity grave) {
             grave.fill(player, contents, xp);
         }
+
+        // Ins Verzeichnis: in einem ungeladenen Chunk ist dieser Stein sonst nicht mehr
+        // auffindbar, und `reset graves` liefe daran vorbei.
+        GraveRegistry.get(level.getServer()).add(pos, player.getUUID());
     }
 
     /**

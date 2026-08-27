@@ -151,6 +151,19 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
         return ownerName;
     }
 
+    /**
+     * Wirft den gespeicherten Inhalt weg, ohne ihn auszuschuetten.
+     *
+     * <p>Gebraucht von {@code reset graves}: {@link GraveBlock#onRemove} laesst den Inhalt
+     * fallen und die XP als Orbs platzen — beim Abraeumen soll aber nichts liegenbleiben.
+     * Ein Reset ist keine Auszahlung.
+     */
+    public void discard() {
+        clearContent();
+        storedXp = 0;
+        setChanged();
+    }
+
     public int getStoredXp() {
         return storedXp;
     }
