@@ -19,7 +19,10 @@ import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
+import net.bananemdnsa.mchelden.world.DividerWall;
+import net.bananemdnsa.mchelden.world.SpawnPlacer;
 import net.bananemdnsa.mchelden.text.HeldenText;
+import net.bananemdnsa.mchelden.text.StatusReport;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
@@ -60,6 +63,13 @@ public class MCHelden {
         NeoForge.EVENT_BUS.addListener(QuotaEvents::onRightClickBlock);
         NeoForge.EVENT_BUS.addListener(GraveEvents::onDeath);
         NeoForge.EVENT_BUS.addListener(GraveEvents::onRespawn);
+        NeoForge.EVENT_BUS.addListener(DividerWall::onEntityTick);
+        NeoForge.EVENT_BUS.addListener(DividerWall::onBreak);
+        NeoForge.EVENT_BUS.addListener(DividerWall::onPlace);
+        NeoForge.EVENT_BUS.addListener(DividerWall::onRightClickBlock);
+        NeoForge.EVENT_BUS.addListener(DividerWall::onLeftClickBlock);
+        NeoForge.EVENT_BUS.addListener(DividerWall::onAttack);
+        NeoForge.EVENT_BUS.addListener(SpawnPlacer::onRespawn);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
@@ -96,6 +106,9 @@ public class MCHelden {
             return;
         }
 
+        // Beim allerersten Join: Seite zuteilen und dorthin setzen. Danach nie wieder.
+        SpawnPlacer.placeOnFirstJoin(player.getServer(), player);
+
         CombatLogout.deliverPendingRespawn(player);
         NetworkHandler.syncTo(player);
 
@@ -105,5 +118,10 @@ public class MCHelden {
 
         // Und wer beim Bounty-Roll offline war, bekommt ihn jetzt nachgespielt.
         BountyManager.deliverPendingRollDelayed(player.getServer(), player.getUUID());
+
+        // Zum Schluss der Statusblock: bei jedem Join, nicht nur beim ersten. Zwischen zwei
+        // Sitzungen aendert sich der Zustand, und genau dann will man ihn wissen. Er steht
+        // ganz am Ende, damit ein ausstehendes Gluecksrad sein Ziel noch verschweigen kann.
+        StatusReport.send(player.getServer(), player);
     }
 }

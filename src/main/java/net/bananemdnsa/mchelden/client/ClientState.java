@@ -11,6 +11,7 @@ import net.bananemdnsa.mchelden.network.StateSyncPayload;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.PlayerState;
+import net.bananemdnsa.mchelden.world.DividerWall;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -48,6 +49,17 @@ public final class ClientState {
     /** Der Client tickt zwanzigmal pro Sekunde, die Uhr laeuft aber in Sekunden. */
     private static int playtimeTicks;
     private static Phase phase = Phase.AUFBAU;
+    /** Steht die Trennwand? Der Renderer haengt allein daran. */
+    private static boolean wallUp = true;
+    /**
+     * Wie lange der Bruch schon laeuft.
+     *
+     * <p>Die Wand faellt nicht weg, sie bricht — von der Mitte nach aussen, hinter der
+     * Partikelwelle her. Ohne diese Uhr wuerde sie im letzten Moment einfach verschwinden.
+     */
+    private static int wallDropTicks = -1;
+    /** Ab hier ist jede erreichbare Welt durchgebrochen. */
+    private static final int WALL_DROP_MAX_TICKS = 2000;
 
     /** Wie lange der Rahmen des Kastens aufleuchtet, wenn ein Ziel ankommt. */
     public static final int BOUNTY_APPEAR_TICKS = 10;
@@ -107,6 +119,11 @@ public final class ClientState {
         playtimeRemainingSeconds = payload.playtimeRemainingSeconds();
         playtimeTicks = 0;
         phase = Phase.byId(payload.phaseId());
+        wallUp = payload.wallUp();
+        // Die Kollision laeuft auch auf dem Client — die muss den Stand ebenfalls kennen.
+        net.bananemdnsa.mchelden.world.DividerWall.setClientWallUp(wallUp);
+
+
 
         noteBountyChange(hadTarget, wasGone);
     }
@@ -161,6 +178,23 @@ public final class ClientState {
 
         playtimeTicks = 0;
         playtimeRemainingSeconds--;
+    }
+
+    /** Die Wand beginnt aufzubrechen — oder der Vorgang wird abgebrochen. */
+    public static void onWallDrop(boolean dropping) {
+        wallDropTicks = dropping ? 0 : -1;
+        DividerWall.setClientEdge(Double.MAX_VALUE);
+    }
+
+    /**
+     * Wo die Oberkante der sinkenden Wand steht, in Welt-Y.
+     *
+     * <p>{@link Double#MAX_VALUE}, solange sie nicht sinkt — dann reicht die Wand bis oben.
+     */
+    public static double wallEdge(float partialTick) {
+        return wallDropTicks < 0
+                ? Double.MAX_VALUE
+                : DividerWall.edgeAt(wallDropTicks + partialTick);
     }
 
     /** Startet Halten und Zerspringen. Das verlorene Herz bleibt so lange sichtbar. */
@@ -277,6 +311,16 @@ public final class ClientState {
 
         tickPlaytime();
 
+        // Gedeckelt: nach dem Durchbruch zeichnet der Renderer ohnehin nichts mehr, und ein
+        // Zaehler, der stundenlang weiterlaeuft, hilft niemandem.
+        if (wallDropTicks >= 0 && wallDropTicks < WALL_DROP_MAX_TICKS) {
+            wallDropTicks++;
+        }
+
+        // Die Kollision liest denselben Wert wie der Renderer, sonst steht man vor einer
+        // abgesunkenen Wand, durch die man trotzdem nicht hindurchkommt.
+        DividerWall.setClientEdge(wallEdge(0f));
+
         boolean wasRolling = BountyRoll.isRunning();
         BountyRoll.tick();
         if (wasRolling && !BountyRoll.isRunning()) {
@@ -373,6 +417,9 @@ public final class ClientState {
         playtimeRemainingSeconds = PlaytimeTracker.NO_LIMIT;
         playtimeTicks = 0;
         phase = Phase.AUFBAU;
+        wallUp = true;
+        wallDropTicks = -1;
+        DividerWall.setClientEdge(Double.MAX_VALUE);
         lossTicks = 0;
         combatTicks = 0;
         combatFlashTicks = 0;
@@ -439,6 +486,10 @@ public final class ClientState {
 
     public static int getPlaytimeRemainingSeconds() {
         return playtimeRemainingSeconds;
+    }
+
+    public static boolean isWallUp() {
+        return wallUp;
     }
 
     public static Phase getPhase() {

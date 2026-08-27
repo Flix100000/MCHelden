@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 
 /**
@@ -28,6 +29,8 @@ public class PlayerState {
     private static final String KEY_ELIMINATED = "eliminated";
     private static final String KEY_PENDING_RESPAWN = "pendingRespawn";
     private static final String KEY_PENDING_BOUNTY_ROLL = "pendingBountyRoll";
+    private static final String KEY_SIDE = "side";
+    private static final String KEY_START_SPAWN = "startSpawn";
 
     private final UUID uuid;
     private String name = "";
@@ -40,6 +43,10 @@ public class PlayerState {
     private boolean eliminated;
     private boolean pendingRespawn;
     private boolean pendingBountyRoll;
+    @Nullable
+    private Side side;
+    @Nullable
+    private BlockPos startSpawn;
 
     public PlayerState(UUID uuid) {
         this.uuid = uuid;
@@ -128,6 +135,37 @@ public class PlayerState {
         this.pendingBountyRoll = pendingBountyRoll;
     }
 
+    /**
+     * Die Welthaelfte dieses Spielers, oder {@code null}, solange er noch nie da war.
+     *
+     * <p>Entscheidet, wohin er respawnt und welche Haelfte er ueberhaupt betreten darf.
+     * Vergeben wird sie einmalig beim ersten Join, danach nie wieder — sonst stuende jemand
+     * nach einem Serverneustart auf der anderen Seite seiner eigenen Basis.
+     */
+    @Nullable
+    public Side getSide() {
+        return side;
+    }
+
+    public void setSide(@Nullable Side side) {
+        this.side = side;
+    }
+
+    /**
+     * Wo dieser Spieler ins Projekt gestartet ist.
+     *
+     * <p>Zugleich sein Rueckfall-Respawn. Der Weltspawn liegt auf 0,0 und damit mitten in
+     * der Trennwand — wer ohne Bett stirbt, muesste sonst dort landen.
+     */
+    @Nullable
+    public BlockPos getStartSpawn() {
+        return startSpawn;
+    }
+
+    public void setStartSpawn(@Nullable BlockPos startSpawn) {
+        this.startSpawn = startSpawn;
+    }
+
     public boolean isEliminated() {
         return eliminated;
     }
@@ -150,6 +188,12 @@ public class PlayerState {
         tag.putBoolean(KEY_ELIMINATED, eliminated);
         tag.putBoolean(KEY_PENDING_RESPAWN, pendingRespawn);
         tag.putBoolean(KEY_PENDING_BOUNTY_ROLL, pendingBountyRoll);
+        if (side != null) {
+            tag.putString(KEY_SIDE, side.getId());
+        }
+        if (startSpawn != null) {
+            tag.putLong(KEY_START_SPAWN, startSpawn.asLong());
+        }
         return tag;
     }
 
@@ -164,6 +208,10 @@ public class PlayerState {
         state.eliminated = tag.getBoolean(KEY_ELIMINATED);
         state.pendingRespawn = tag.getBoolean(KEY_PENDING_RESPAWN);
         state.pendingBountyRoll = tag.getBoolean(KEY_PENDING_BOUNTY_ROLL);
+        state.side = Side.byId(tag.getString(KEY_SIDE));
+        state.startSpawn = tag.contains(KEY_START_SPAWN)
+                ? BlockPos.of(tag.getLong(KEY_START_SPAWN))
+                : null;
         return state;
     }
 }

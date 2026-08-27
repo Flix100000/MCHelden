@@ -2,6 +2,7 @@ package net.bananemdnsa.mchelden.text;
 
 import net.minecraft.ChatFormatting;
 import net.bananemdnsa.mchelden.state.Phase;
+import net.bananemdnsa.mchelden.state.PlayerState;
 
 import net.minecraft.network.chat.Component;
 
@@ -165,6 +166,41 @@ public final class HeldenText {
 
     public static Component bountyDebugSolo() {
         return Component.translatable("mchelden.command.bounty.debug.solo").withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component welcomeHeader() {
+        return Component.translatable("mchelden.welcome.header").withStyle(ChatFormatting.GOLD);
+    }
+
+    public static Component welcomeHearts(int hearts) {
+        return Component.literal(hearts + " / " + PlayerState.MAX_HEARTS)
+                .withStyle(ChatFormatting.AQUA);
+    }
+
+    public static Component welcomeBountyPending() {
+        return Component.translatable("mchelden.welcome.bounty.pending")
+                .withStyle(ChatFormatting.DARK_GRAY);
+    }
+
+    public static Component welcomeWall() {
+        return Component.translatable("mchelden.welcome.wall").withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Kurz und in der Actionbar: der Hinweis kommt beim Bauen oft. */
+    public static Component wallBlocked() {
+        return Component.translatable("mchelden.wall.blocked").withStyle(ChatFormatting.RED);
+    }
+
+    public static Component wallDropped() {
+        return Component.translatable("mchelden.command.wall.dropped").withStyle(ChatFormatting.GOLD);
+    }
+
+    public static Component wallRaised() {
+        return Component.translatable("mchelden.command.wall.raised").withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component wallAlready() {
+        return Component.translatable("mchelden.command.wall.already").withStyle(ChatFormatting.GRAY);
     }
 
     public static Component phaseCountdown(int seconds) {

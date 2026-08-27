@@ -6,6 +6,7 @@ import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.phase.PhaseManager;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
+import net.bananemdnsa.mchelden.world.DividerWall;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -91,5 +92,6 @@ public final class CombatEvents {
         BountyManager.tick(event.getServer());
         PhaseManager.tick(event.getServer());
         PlaytimeTracker.tick(event.getServer());
+        DividerWall.tick(event.getServer());
     }
 }

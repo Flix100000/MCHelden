@@ -1,7 +1,9 @@
 package net.bananemdnsa.mchelden.state;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import net.minecraft.nbt.CompoundTag;
 
@@ -17,6 +19,27 @@ class GameStateTest {
         CompoundTag tag = state.save(new CompoundTag(), null);
 
         assertEquals(Phase.FINAL_WAR, GameState.load(tag, null).getPhase());
+    }
+
+    /**
+     * Die Wand ist ein Schalter, kein abgeleiteter Wert — anders als das Zeitlimit, das die
+     * Phase befragt. Grund: {@code wall drop} und {@code wall raise} sind eigenstaendige
+     * Commands. Ein Schalter muss den Neustart ueberstehen, sonst stuende die Wand nach
+     * jedem Serverstart wieder mitten im Krieg.
+     */
+    @Test
+    void wandzustandUeberlebtDieSpeicherrunde() {
+        GameState state = new GameState();
+        state.setWallUp(false);
+
+        CompoundTag tag = state.save(new CompoundTag(), null);
+
+        assertFalse(GameState.load(tag, null).isWallUp());
+    }
+
+    @Test
+    void frischeWeltHatEineStehendeWand() {
+        assertTrue(new GameState().isWallUp());
     }
 
     @Test

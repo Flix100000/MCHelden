@@ -3,7 +3,8 @@
   "package": "net.bananemdnsa.mchelden.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "CombatTrackerMixin"
+    "CombatTrackerMixin",
+    "EntityCollideMixin"
   ],
   "client": [],
   "injectors": {

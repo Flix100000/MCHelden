@@ -25,9 +25,11 @@ import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.Phase;
+import net.bananemdnsa.mchelden.state.Side;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.text.HeldenText;
+import net.bananemdnsa.mchelden.world.DividerWall;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -117,6 +119,8 @@ public final class HeldenCommand {
                                 .executes(context -> debugQuota(context.getSource())))
                         .then(Commands.literal("playtime")
                                 .executes(context -> debugPlaytime(context.getSource())))
+                        .then(Commands.literal("wall")
+                                .executes(context -> debugWall(context.getSource())))
                         .then(Commands.literal("death")
                                 .executes(context -> debugDeath(context.getSource())))
                         .then(Commands.literal("animation")
@@ -133,6 +137,11 @@ public final class HeldenCommand {
                                         .executes(context -> phaseSet(
                                                 context.getSource(),
                                                 StringArgumentType.getString(context, "phase"))))))
+                .then(Commands.literal("wall")
+                        .then(Commands.literal("drop")
+                                .executes(context -> wall(context.getSource(), false)))
+                        .then(Commands.literal("raise")
+                                .executes(context -> wall(context.getSource(), true))))
                 .then(Commands.literal("time")
                         .then(Commands.literal("check")
                                 .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
@@ -460,6 +469,30 @@ public final class HeldenCommand {
         return 1;
     }
 
+    /**
+     * Fragt Server und Client, was sie ueber die Trennwand wissen.
+     *
+     * <p>Der Renderer ist der einzige Teil dieser Etappe, den nur der Client kennt. Bleibt
+     * der Bildschirm leer, unterscheidet diese Ausgabe die moeglichen Ursachen, statt sie
+     * raten zu lassen.
+     */
+    private static int debugWall(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+
+        source.sendSuccess(() -> Component.literal("Server: Wand "
+                + (DividerWall.isUp(source.getServer()) ? "steht" : "gefallen")
+                + " | dein X " + String.format("%.1f", player.getX())
+                + " | Seite " + sideLabel(source.getServer(), player)).withStyle(ChatFormatting.GRAY), false);
+
+        NetworkHandler.askWallReport(player);
+        return 1;
+    }
+
+    private static String sideLabel(MinecraftServer server, ServerPlayer player) {
+        Side side = DividerWall.sideOf(server, player);
+        return side == null ? "keine" : side.getId();
+    }
+
     /** Leert die Kontingente, damit sich der aufgebrauchte Zustand ansehen laesst. */
     private static int debugQuota(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
@@ -502,6 +535,25 @@ public final class HeldenCommand {
         source.sendSuccess(() -> counting
                 ? HeldenText.phaseStarting(phase.getDisplayName())
                 : HeldenText.phaseSet(phase.getDisplayName()), true);
+        return 1;
+    }
+
+    /**
+     * Stellt die Trennwand um, ohne die Phase anzufassen.
+     *
+     * <p>Die Gegenrichtung zu {@code wall drop} ist {@code wall raise} und nicht ein
+     * Phasenwechsel: es darf keinen Zustand geben, aus dem es nur vorwaerts geht.
+     */
+    private static int wall(CommandSourceStack source, boolean up) {
+        MinecraftServer server = source.getServer();
+        if (DividerWall.isUp(server) == up) {
+            source.sendSuccess(HeldenText::wallAlready, false);
+            return 0;
+        }
+
+        DividerWall.setUp(server, up);
+        server.getPlayerList().broadcastSystemMessage(
+                up ? HeldenText.wallRaised() : HeldenText.wallDropped(), false);
         return 1;
     }
 

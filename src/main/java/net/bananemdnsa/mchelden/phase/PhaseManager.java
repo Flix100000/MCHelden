@@ -6,6 +6,7 @@ import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.text.HeldenText;
+import net.bananemdnsa.mchelden.world.DividerWall;
 
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
@@ -34,6 +35,15 @@ public final class PhaseManager {
     /** Wie lange der Countdown vor einem Wechsel nach vorn laeuft. */
     public static final int COUNTDOWN_SECONDS = 5;
 
+    /**
+     * Der Wechsel in den Krieg bekommt mehr Zeit.
+     *
+     * <p>In diesem Countdown laeuft die Partikelwelle des Wall Drops von 0,0 bis an beide
+     * Enden der Trennlinie — zweitausend Bloecke wollen gesehen werden. Erst wenn sie
+     * ankommt, faellt die Kollision.
+     */
+    public static final int WALL_DROP_SECONDS = DividerWall.DROP_TICKS / 20;
+
     @Nullable
     private static Phase pending;
     private static int ticksLeft;
@@ -61,8 +71,19 @@ public final class PhaseManager {
         }
 
         pending = target;
-        ticksLeft = COUNTDOWN_SECONDS * 20;
+        ticksLeft = secondsFor(target) * 20;
+
+        // Die Wand bricht waehrend des Countdowns auf, nicht erst an seinem Ende: Ansage,
+        // Welle und das Verschwinden der Wand sind ein Vorgang.
+        if (target == Phase.KRIEG && DividerWall.isUp(server)) {
+            NetworkHandler.sendWallDrop(server, true);
+        }
         return true;
+    }
+
+    /** Der Wall Drop braucht laenger als eine gewoehnliche Ansage. */
+    private static int secondsFor(Phase target) {
+        return target == Phase.KRIEG ? WALL_DROP_SECONDS : COUNTDOWN_SECONDS;
     }
 
     /** Die naechste Phase, oder {@code null}, wenn es keine mehr gibt. */
@@ -89,6 +110,13 @@ public final class PhaseManager {
         }
 
         ticksLeft--;
+
+        // Die Welle laeuft waehrend des Countdowns, nicht danach: Ansage und Wall Drop
+        // sind ein Moment, nicht zwei.
+        if (pending == Phase.KRIEG) {
+            DividerWall.tickDrop(server, secondsFor(pending) * 20 - ticksLeft);
+        }
+
         if (ticksLeft <= 0) {
             Phase target = pending;
             pending = null;
@@ -109,7 +137,7 @@ public final class PhaseManager {
                     HeldenText.phaseCountdownSubtitle(pending.getDisplayName())));
 
             // Steigende Tonhoehe: der Countdown zieht sich hoerbar zusammen.
-            float step = (COUNTDOWN_SECONDS - seconds) / (float) COUNTDOWN_SECONDS;
+            float step = (secondsFor(pending) - seconds) / (float) secondsFor(pending);
             play(player, SoundEvents.NOTE_BLOCK_HAT.value(), 0.8f, 1.0f + step);
         }
     }
@@ -125,6 +153,14 @@ public final class PhaseManager {
      */
     public static void apply(MinecraftServer server, Phase target, boolean staged) {
         GameState.get(server).setPhase(target);
+
+        // Die Trennwand haengt an der Phase, ist aber ein eigener Schalter: `wall drop` und
+        // `wall raise` sollen auch unabhaengig greifen. Der Wechsel bedient ihn, besitzt
+        // ihn nicht.
+        DividerWall.setUp(server, target == Phase.AUFBAU);
+        if (staged && target == Phase.KRIEG) {
+            DividerWall.playForEveryone(server);
+        }
 
         // Das Zeitlimit haengt an der Phase, nicht an einem Schalter. Der Sync bringt den
         // HUD-Zaehler damit von selbst in den richtigen Zustand — oder laesst ihn ganz weg.

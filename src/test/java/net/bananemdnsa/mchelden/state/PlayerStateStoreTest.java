@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,53 @@ class PlayerStateStoreTest {
 
         assertNotNull(restored);
         assertTrue(restored.isPendingBountyRoll());
+    }
+
+    /**
+     * Die Seite entscheidet, wohin jemand respawnt und welche Haelfte er betreten darf.
+     * Ginge sie beim Neustart verloren, stuenden Spieler auf der falschen Seite der Wand.
+     */
+    @Test
+    void seiteUeberlebtDieSpeicherrunde() {
+        PlayerStateStore store = new PlayerStateStore();
+        UUID uuid = UUID.randomUUID();
+        store.getOrCreate(uuid).setSide(Side.EAST);
+
+        PlayerState restored = roundTrip(store).find(uuid);
+
+        assertNotNull(restored);
+        assertEquals(Side.EAST, restored.getSide());
+    }
+
+    /**
+     * Der Startspawn ist zugleich der Rueckfall-Respawn: der Weltspawn liegt auf 0,0 und
+     * damit mitten in der Trennwand. Ginge er verloren, landete jemand ohne Bett genau
+     * dort.
+     */
+    @Test
+    void startspawnUeberlebtDieSpeicherrunde() {
+        PlayerStateStore store = new PlayerStateStore();
+        UUID uuid = UUID.randomUUID();
+        BlockPos spawn = new BlockPos(-431, 72, 118);
+        store.getOrCreate(uuid).setStartSpawn(spawn);
+
+        PlayerState restored = roundTrip(store).find(uuid);
+
+        assertNotNull(restored);
+        assertEquals(spawn, restored.getStartSpawn());
+    }
+
+    /** Ohne Seite heisst: war noch nie da. Erst der Startspawn vergibt eine. */
+    @Test
+    void neuerSpielerHatNochKeineSeite() {
+        PlayerStateStore store = new PlayerStateStore();
+        UUID uuid = UUID.randomUUID();
+        store.getOrCreate(uuid);
+
+        PlayerState restored = roundTrip(store).find(uuid);
+
+        assertNotNull(restored);
+        assertNull(restored.getSide());
     }
 
     @Test

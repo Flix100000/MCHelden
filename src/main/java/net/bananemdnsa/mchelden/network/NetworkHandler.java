@@ -39,6 +39,14 @@ public final class NetworkHandler {
                 BountyRollPayload.TYPE,
                 BountyRollPayload.STREAM_CODEC,
                 NetworkHandler::handleBountyRollOnClient);
+        registrar.playToClient(
+                WallDebugPayload.TYPE,
+                WallDebugPayload.STREAM_CODEC,
+                NetworkHandler::handleWallDebugOnClient);
+        registrar.playToClient(
+                WallDropPayload.TYPE,
+                WallDropPayload.STREAM_CODEC,
+                NetworkHandler::handleWallDropOnClient);
     }
 
     /**
@@ -72,7 +80,8 @@ public final class NetworkHandler {
                 state.getHearts(),
                 bountyView(server, store, state),
                 PlaytimeTracker.displayRemaining(server, player, state),
-                GameState.get(server).getPhase().getId()));
+                GameState.get(server).getPhase().getId(),
+                GameState.get(server).isWallUp()));
     }
 
     public static void syncAll(MinecraftServer server) {
@@ -127,6 +136,27 @@ public final class NetworkHandler {
 
     private static void handleBountyRollOnClient(BountyRollPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onBountyRoll(payload));
+    }
+
+    private static void handleWallDebugOnClient(WallDebugPayload payload, IPayloadContext context) {
+        context.enqueueWork(net.bananemdnsa.mchelden.client.render.WallRenderer::report);
+    }
+
+    private static void handleWallDropOnClient(WallDropPayload payload, IPayloadContext context) {
+        context.enqueueWork(() ->
+                net.bananemdnsa.mchelden.client.ClientState.onWallDrop(payload.dropping()));
+    }
+
+    /** Laesst die Trennwand bei allen aufbrechen, oder bricht den Vorgang ab. */
+    public static void sendWallDrop(MinecraftServer server, boolean dropping) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(player, new WallDropPayload(dropping));
+        }
+    }
+
+    /** Fragt einen Client, was er ueber die Trennwand weiss. */
+    public static void askWallReport(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, new WallDebugPayload());
     }
 
     public static String version() {
