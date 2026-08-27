@@ -2,7 +2,9 @@ package net.bananemdnsa.mchelden.command;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
@@ -15,9 +17,12 @@ import net.bananemdnsa.mchelden.grave.GraveBlockEntity;
 import net.bananemdnsa.mchelden.grave.GraveRegistry;
 import net.bananemdnsa.mchelden.hearts.Elimination;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
+import net.bananemdnsa.mchelden.phase.PhaseManager;
+import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.text.HeldenText;
+import net.bananemdnsa.mchelden.world.BorderController;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -45,6 +50,18 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public final class ResetCommand {
 
+    /** Wie lange eine Bestaetigung gilt. */
+    private static final int CONFIRM_SECONDS = 30;
+
+    /**
+     * Wer wann bestaetigt hat.
+     *
+     * <p>Pro Aufrufer, damit zwei Ops sich nicht gegenseitig die Bestaetigung wegnehmen —
+     * sonst loeste der eine aus, was der andere nur nachgelesen hatte. Der Schluessel ist
+     * der Name der Befehlsquelle, damit auch die Serverkonsole einen eigenen Platz bekommt.
+     */
+    private static final Map<String, Long> PENDING = new HashMap<>();
+
     private ResetCommand() {
     }
 
@@ -54,7 +71,66 @@ public final class ResetCommand {
                 .then(branch("hearts", ResetCommand::hearts))
                 .then(branch("bounty", ResetCommand::bounty))
                 .then(branch("time", ResetCommand::time))
-                .then(branch("graves", ResetCommand::graves));
+                .then(branch("graves", ResetCommand::graves))
+                .then(Commands.literal("all")
+                        .executes(context -> all(context.getSource())));
+    }
+
+    /**
+     * Setzt den kompletten Spielstand zurueck.
+     *
+     * <p>Der erste Aufruf warnt und listet auf, was verlorengeht; erst eine Wiederholung
+     * innerhalb von {@link #CONFIRM_SECONDS} Sekunden fuehrt aus. Versehentlich in Woche
+     * zwei ausgeloest waere das Projekt vorbei.
+     *
+     * <p>Gezaehlt wird in Serverticks statt in Systemzeit: die laeuft auch dann weiter, wenn
+     * der Server steht, und eine Bestaetigung von vor dem Neustart soll nicht greifen.
+     */
+    private static int all(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+        String who = source.getTextName();
+        long now = server.getTickCount();
+        Long armed = PENDING.get(who);
+
+        if (armed == null || now - armed > CONFIRM_SECONDS * 20L) {
+            PENDING.put(who, now);
+            source.sendSuccess(HeldenText::resetAllWarning, false);
+            source.sendSuccess(HeldenText::resetAllList, false);
+            source.sendSuccess(() -> HeldenText.resetAllConfirm(CONFIRM_SECONDS), false);
+            return 0;
+        }
+
+        PENDING.remove(who);
+        wipe(server);
+        source.sendSuccess(HeldenText::resetAllDone, false);
+        return 1;
+    }
+
+    /**
+     * Der Auslieferungszustand.
+     *
+     * <p><b>Die Phase geht ueber den {@link PhaseManager}</b>, nicht ueber den Spielzustand
+     * direkt. Nur so kommen die Seiteneffekte mit: Wand wieder hoch, Bossbar weg, Sturm
+     * vorbei, Safezone wieder da.
+     *
+     * <p>Die Graeber zuerst, solange das Verzeichnis noch steht.
+     */
+    private static void wipe(MinecraftServer server) {
+        GraveRegistry registry = GraveRegistry.get(server);
+        clearGraves(server, registry.all());
+        registry.clear();
+
+        PlayerStateStore.get(server).clear();
+
+        PhaseManager.cancel(server);
+        PhaseManager.apply(server, Phase.AUFBAU, false);
+
+        // Unabhaengig von der vorigen Phase: `apply` setzt die Border nur zurueck, wenn
+        // vorher Final War war. Ein von Hand geschrumpftes Ziel bliebe sonst stehen, und
+        // "Auslieferungszustand" hiesse dann nicht dasselbe wie beim ersten Start.
+        BorderController.reset(server);
+
+        NetworkHandler.syncAll(server);
     }
 
     /** Ein Zweig mit optionalem Spielerziel. Ohne Argument global. */
