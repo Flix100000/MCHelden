@@ -8,6 +8,7 @@ import javax.annotation.Nullable;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.state.Side;
+import net.bananemdnsa.mchelden.text.HeldenText;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -144,6 +145,42 @@ public final class SpawnPlacer {
         if (belowWorld || wrongSide) {
             returnToStart(server, player);
         }
+
+        // Zuletzt, damit es auch nach dem Zurueckholen auf den Startpunkt noch greift: der
+        // liegt mindestens 120 Bloecke von der Wand entfernt, die Endarena misst plusminus
+        // 80. Im Final War landet also *jeder ohne Bett* ausserhalb.
+        pullInsideBorder(server, player);
+    }
+
+    /**
+     * Holt einen Respawnten in die Border zurueck.
+     *
+     * <p>Haengt an der Border, nicht an der Phase — aus demselben Grund wie das Gewitter an
+     * ihrer Kante: ein {@code border shrink} als Werkzeug liesse die Luecke sonst offen.
+     *
+     * <p>Das Bett wird dabei nicht angefasst. Die Korrektur wiederholt sich beim naechsten
+     * Tod von selbst und ist damit ohne Gedaechtnis richtig.
+     */
+    private static void pullInsideBorder(MinecraftServer server, ServerPlayer player) {
+        ServerLevel level = server.overworld();
+        WorldBorder border = level.getWorldBorder();
+
+        if (!BorderController.isOutside(border, player.getX(), player.getZ())) {
+            return;
+        }
+
+        double[] inside = BorderController.clampInside(border, player.getX(), player.getZ());
+        BlockPos surface = surfaceAt(level,
+                (int) Math.floor(inside[0]), (int) Math.floor(inside[1]));
+
+        // Kein tauglicher Boden an der Stelle: dann lieber auf die Hoehe des Spielers setzen
+        // als ihn draussen stehen zu lassen. Ein Sturz ist reparabel, Borderschaden nicht.
+        BlockPos target = surface != null
+                ? surface
+                : BlockPos.containing(inside[0], player.getY(), inside[1]);
+
+        teleport(player, level, target);
+        player.displayClientMessage(HeldenText.borderRescued(), false);
     }
 
     /** Die Seite mit weniger zugeteilten Spielern. Bei Gleichstand der Westen. */

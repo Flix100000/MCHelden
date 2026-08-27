@@ -102,5 +102,16 @@
   "mchelden.command.finalwar.stopped": "Final War stopped, border reset",
   "mchelden.command.border.shrinking": "Border shrinking to %s blocks - %s",
   "mchelden.command.border.reset": "Border back to %s blocks",
-  "mchelden.command.duration.invalid": "Cannot read that duration. Like this: 2h30m, 150m, 2h, 90s"
+  "mchelden.command.duration.invalid": "Cannot read that duration. Like this: 2h30m, 150m, 2h, 90s",
+  "mchelden.border.rescued": "You would have woken up outside the border - pulled back in.",
+  "mchelden.command.info.combat": "Combat",
+  "mchelden.command.reset.hearts": "Hearts reset: %s",
+  "mchelden.command.reset.bounty": "Bounties cleared: %s",
+  "mchelden.command.reset.time": "Playtime reset: %s",
+  "mchelden.command.reset.graves": "Graves cleared: %s (%s of them)",
+  "mchelden.command.reset.all.warning": "Careful: reset all wipes the entire save.",
+  "mchelden.command.reset.all.list": "Hearts, bounties, eliminations, playtimes, graves, phase, wall and border.",
+  "mchelden.command.reset.all.confirm": "Run it again within %s seconds to really do it.",
+  "mchelden.command.reset.all.done": "Everything reset. Back to the delivery state.",
+  "mchelden.command.reset.everyone": "everyone"
 }

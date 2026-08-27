@@ -362,4 +362,61 @@ public final class HeldenText {
         return Component.translatable("mchelden.command.duration.invalid")
                 .withStyle(ChatFormatting.RED);
     }
+
+    /** Wenn jemand nach dem Respawn in die Border geholt werden musste. */
+    public static Component borderRescued() {
+        return Component.translatable("mchelden.border.rescued").withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Ein Strich, wo nichts anliegt. Schneller zu lesen als ein ausgeschriebenes Nichts. */
+    public static Component infoNone() {
+        return Component.literal("—").withStyle(ChatFormatting.DARK_GRAY);
+    }
+
+    public static Component resetHearts(String target) {
+        return Component.translatable("mchelden.command.reset.hearts", target)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component resetBounty(String target) {
+        return Component.translatable("mchelden.command.reset.bounty", target)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component resetTime(String target) {
+        return Component.translatable("mchelden.command.reset.time", target)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component resetGraves(String target, int count) {
+        return Component.translatable("mchelden.command.reset.graves", target, count)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Die Warnung beim ersten Aufruf von {@code reset all}. */
+    public static Component resetAllWarning() {
+        return Component.translatable("mchelden.command.reset.all.warning")
+                .withStyle(ChatFormatting.RED);
+    }
+
+    /** Was genau verlorengeht. Steht als eigene Zeile, damit es sich lesen laesst. */
+    public static Component resetAllList() {
+        return Component.translatable("mchelden.command.reset.all.list")
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component resetAllConfirm(int seconds) {
+        return Component.translatable("mchelden.command.reset.all.confirm", seconds)
+                .withStyle(ChatFormatting.YELLOW);
+    }
+
+    public static Component resetAllDone() {
+        return Component.translatable("mchelden.command.reset.all.done")
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Alle statt eines Einzelnen. Steht als Platzhalter in den Reset-Zeilen. */
+    public static Component resetEveryone() {
+        return Component.translatable("mchelden.command.reset.everyone");
+    }
 }

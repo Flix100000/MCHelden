@@ -102,5 +102,16 @@
   "mchelden.command.finalwar.stopped": "Final War abgebrochen, Border zurückgesetzt",
   "mchelden.command.border.shrinking": "Border schrumpft auf %s Blöcke — %s",
   "mchelden.command.border.reset": "Border zurück auf %s Blöcke",
-  "mchelden.command.duration.invalid": "Dauer nicht lesbar. So geht es: 2h30m, 150m, 2h, 90s"
+  "mchelden.command.duration.invalid": "Dauer nicht lesbar. So geht es: 2h30m, 150m, 2h, 90s",
+  "mchelden.border.rescued": "Du wärst außerhalb der Border aufgewacht — zurückgeholt.",
+  "mchelden.command.info.combat": "Kampf",
+  "mchelden.command.reset.hearts": "Herzen zurückgesetzt: %s",
+  "mchelden.command.reset.bounty": "Bounties aufgelöst: %s",
+  "mchelden.command.reset.time": "Spielzeit zurückgesetzt: %s",
+  "mchelden.command.reset.graves": "Gräber abgeräumt: %s (%s Stück)",
+  "mchelden.command.reset.all.warning": "Achtung: reset all setzt den kompletten Spielstand zurück.",
+  "mchelden.command.reset.all.list": "Herzen, Bounties, Eliminationen, Spielzeiten, Gräber, Phase, Wand und Border.",
+  "mchelden.command.reset.all.confirm": "Noch einmal ausführen innerhalb von %s Sekunden, um es wirklich zu tun.",
+  "mchelden.command.reset.all.done": "Alles zurückgesetzt. Der Auslieferungszustand steht.",
+  "mchelden.command.reset.everyone": "alle"
 }
