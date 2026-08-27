@@ -1,6 +1,7 @@
 package net.bananemdnsa.mchelden.mixin;
 
 import net.bananemdnsa.mchelden.world.DividerWall;
+import net.bananemdnsa.mchelden.world.SafeZone;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
@@ -11,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Laesst die Trennwand sich wie eine Wand anfuehlen.
+ * Laesst Trennwand und Safezone sich wie Waende anfuehlen.
  *
  * <p>Ein Mixin ist hier noetig, weil Minecraft pro Dimension nur eine Worldborder kennt und
  * NeoForge keinen Haken fuer zusaetzliche Kollisionsflaechen anbietet.
@@ -30,9 +31,20 @@ public abstract class EntityCollideMixin {
     @Inject(method = "collide", at = @At("RETURN"), cancellable = true)
     private void mchelden$stopAtWall(Vec3 movement, CallbackInfoReturnable<Vec3> callback) {
         Entity entity = (Entity) (Object) this;
-        Vec3 allowed = DividerWall.limit(entity, callback.getReturnValue());
+        Vec3 original = callback.getReturnValue();
+        Vec3 allowed = original;
 
-        if (allowed != null) {
+        Vec3 atWall = DividerWall.limit(entity, allowed);
+        if (atWall != null) {
+            allowed = atWall;
+        }
+
+        Vec3 atZone = SafeZone.limit(entity, allowed);
+        if (atZone != null) {
+            allowed = atZone;
+        }
+
+        if (allowed != original) {
             callback.setReturnValue(allowed);
         }
     }

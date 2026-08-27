@@ -9,6 +9,7 @@ import net.bananemdnsa.mchelden.client.hud.HeartLossOverlay;
 import net.bananemdnsa.mchelden.client.hud.PlaytimeHud;
 import net.bananemdnsa.mchelden.client.hud.QuotaHud;
 import net.bananemdnsa.mchelden.client.render.GraveRenderer;
+import net.bananemdnsa.mchelden.client.render.SafeZoneRenderer;
 import net.bananemdnsa.mchelden.client.render.WallRenderer;
 import net.bananemdnsa.mchelden.client.screen.GraveScreen;
 import net.bananemdnsa.mchelden.registry.MCHeldenBlockEntities;
@@ -58,10 +59,11 @@ public class MCHeldenClient {
         QuotaHud.onScreenRender(event);
     }
 
-    /** Die Trennwand wird dort gezeichnet, wo Vanilla auch seine Weltgrenze zeichnet. */
+    /** Trennwand und Safezone werden dort gezeichnet, wo Vanilla seine Weltgrenze zeichnet. */
     @SubscribeEvent
     static void onRenderLevel(net.neoforged.neoforge.client.event.RenderLevelStageEvent event) {
         WallRenderer.render(event);
+        SafeZoneRenderer.render(event);
     }
 
     @SubscribeEvent

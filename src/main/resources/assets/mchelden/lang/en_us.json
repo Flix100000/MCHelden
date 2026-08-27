@@ -90,5 +90,8 @@
   "mchelden.welcome.bounty": "Bounty",
   "mchelden.welcome.bounty.pending": "drawn later",
   "mchelden.welcome.wall": "The dividing wall stands at X = 0 - this half is yours.",
-  "mchelden.wall.blocked": "Nothing works beyond the dividing wall"
+  "mchelden.wall.blocked": "Nothing works beyond the dividing wall",
+  "mchelden.safezone.entered": "Safe zone - nobody attacks here.",
+  "mchelden.safezone.left": "Left the safe zone.",
+  "mchelden.safezone.denied": "You cannot enter the safe zone while fighting."
 }

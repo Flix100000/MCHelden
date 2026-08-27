@@ -20,6 +20,7 @@ import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.world.DividerWall;
+import net.bananemdnsa.mchelden.world.SafeZone;
 import net.bananemdnsa.mchelden.world.SpawnPlacer;
 import net.bananemdnsa.mchelden.text.HeldenText;
 import net.bananemdnsa.mchelden.text.StatusReport;
@@ -70,6 +71,11 @@ public class MCHelden {
         NeoForge.EVENT_BUS.addListener(DividerWall::onLeftClickBlock);
         NeoForge.EVENT_BUS.addListener(DividerWall::onAttack);
         NeoForge.EVENT_BUS.addListener(SpawnPlacer::onRespawn);
+        NeoForge.EVENT_BUS.addListener(SafeZone::onIncomingDamage);
+        NeoForge.EVENT_BUS.addListener(SafeZone::onExplosion);
+        NeoForge.EVENT_BUS.addListener(SafeZone::onPlace);
+        NeoForge.EVENT_BUS.addListener(SafeZone::onPlayerTick);
+        NeoForge.EVENT_BUS.addListener(SafeZone::onSpawn);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {

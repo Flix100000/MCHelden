@@ -30,6 +30,7 @@ import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.text.HeldenText;
 import net.bananemdnsa.mchelden.world.DividerWall;
+import net.bananemdnsa.mchelden.world.SafeZone;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -119,8 +120,8 @@ public final class HeldenCommand {
                                 .executes(context -> debugQuota(context.getSource())))
                         .then(Commands.literal("playtime")
                                 .executes(context -> debugPlaytime(context.getSource())))
-                        .then(Commands.literal("wall")
-                                .executes(context -> debugWall(context.getSource())))
+                        .then(Commands.literal("render")
+                                .executes(context -> debugRender(context.getSource())))
                         .then(Commands.literal("death")
                                 .executes(context -> debugDeath(context.getSource())))
                         .then(Commands.literal("animation")
@@ -476,15 +477,21 @@ public final class HeldenCommand {
      * der Bildschirm leer, unterscheidet diese Ausgabe die moeglichen Ursachen, statt sie
      * raten zu lassen.
      */
-    private static int debugWall(CommandSourceStack source) throws CommandSyntaxException {
+    private static int debugRender(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
+        MinecraftServer server = source.getServer();
 
         source.sendSuccess(() -> Component.literal("Server: Wand "
-                + (DividerWall.isUp(source.getServer()) ? "steht" : "gefallen")
+                + (DividerWall.isUp(server) ? "steht" : "gefallen")
                 + " | dein X " + String.format("%.1f", player.getX())
-                + " | Seite " + sideLabel(source.getServer(), player)).withStyle(ChatFormatting.GRAY), false);
+                + " | Seite " + sideLabel(server, player)).withStyle(ChatFormatting.GRAY), false);
 
-        NetworkHandler.askWallReport(player);
+        source.sendSuccess(() -> Component.literal("Server: Safezone "
+                + (SafeZone.isActive(server) ? "aktiv" : "aus")
+                + " | du bist " + (SafeZone.covers(player) ? "drin" : "draussen"))
+                .withStyle(ChatFormatting.GRAY), false);
+
+        NetworkHandler.askRenderReport(player);
         return 1;
     }
 

@@ -123,6 +123,9 @@ public final class ClientState {
         // Die Kollision laeuft auch auf dem Client — die muss den Stand ebenfalls kennen.
         net.bananemdnsa.mchelden.world.DividerWall.setClientWallUp(wallUp);
 
+        // Ob die Safezone gilt, folgt aus der Phase — mehr braucht ein Zylinder nicht.
+        net.bananemdnsa.mchelden.world.SafeZone.setClientActive(phase != Phase.FINAL_WAR);
+
 
 
         noteBountyChange(hadTarget, wasGone);
@@ -212,6 +215,7 @@ public final class ClientState {
      */
     public static void onCombat(net.bananemdnsa.mchelden.network.CombatSyncPayload payload) {
         pearlsLeft = payload.pearlsLeft();
+        net.bananemdnsa.mchelden.world.SafeZone.setClientInCombat(payload.remainingTicks() > 0);
         cobwebsLeft = payload.cobwebsLeft();
 
         int remainingTicks = payload.remainingTicks();
@@ -320,6 +324,10 @@ public final class ClientState {
         // Die Kollision liest denselben Wert wie der Renderer, sonst steht man vor einer
         // abgesunkenen Wand, durch die man trotzdem nicht hindurchkommt.
         DividerWall.setClientEdge(wallEdge(0f));
+
+        // Der Client zaehlt den Combat-Timer selbst herunter — die Safezone-Sperre haengt
+        // daran und muss denselben Stand kennen.
+        net.bananemdnsa.mchelden.world.SafeZone.setClientInCombat(combatTicks > 0);
 
         boolean wasRolling = BountyRoll.isRunning();
         BountyRoll.tick();

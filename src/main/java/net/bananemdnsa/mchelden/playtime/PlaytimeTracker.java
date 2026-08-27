@@ -147,6 +147,7 @@ public final class PlaytimeTracker {
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         FORCED.remove(event.getEntity().getUUID());
         OVERRUN.remove(event.getEntity().getUUID());
+        net.bananemdnsa.mchelden.world.SafeZone.forget(event.getEntity().getUUID());
     }
 
     /**

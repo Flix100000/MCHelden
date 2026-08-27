@@ -40,9 +40,9 @@ public final class NetworkHandler {
                 BountyRollPayload.STREAM_CODEC,
                 NetworkHandler::handleBountyRollOnClient);
         registrar.playToClient(
-                WallDebugPayload.TYPE,
-                WallDebugPayload.STREAM_CODEC,
-                NetworkHandler::handleWallDebugOnClient);
+                RenderDebugPayload.TYPE,
+                RenderDebugPayload.STREAM_CODEC,
+                NetworkHandler::handleRenderDebugOnClient);
         registrar.playToClient(
                 WallDropPayload.TYPE,
                 WallDropPayload.STREAM_CODEC,
@@ -138,8 +138,11 @@ public final class NetworkHandler {
         context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onBountyRoll(payload));
     }
 
-    private static void handleWallDebugOnClient(WallDebugPayload payload, IPayloadContext context) {
-        context.enqueueWork(net.bananemdnsa.mchelden.client.render.WallRenderer::report);
+    private static void handleRenderDebugOnClient(RenderDebugPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            net.bananemdnsa.mchelden.client.render.WallRenderer.report();
+            net.bananemdnsa.mchelden.client.render.SafeZoneRenderer.report();
+        });
     }
 
     private static void handleWallDropOnClient(WallDropPayload payload, IPayloadContext context) {
@@ -154,9 +157,9 @@ public final class NetworkHandler {
         }
     }
 
-    /** Fragt einen Client, was er ueber die Trennwand weiss. */
-    public static void askWallReport(ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, new WallDebugPayload());
+    /** Fragt einen Client, was er ueber Trennwand und Safezone weiss. */
+    public static void askRenderReport(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, new RenderDebugPayload());
     }
 
     public static String version() {

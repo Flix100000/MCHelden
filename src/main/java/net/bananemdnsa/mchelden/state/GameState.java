@@ -7,6 +7,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 /** Globaler Spielzustand. Aktuell nur die Phase, waechst mit den spaeteren Etappen. */
 public class GameState extends SavedData {
+
     private static final String NAME = "mchelden_game";
     private static final String KEY_PHASE = "phase";
     private static final String KEY_WALL_UP = "wallUp";
@@ -25,6 +26,7 @@ public class GameState extends SavedData {
      * ihn aber nicht.
      */
     private boolean wallUp = true;
+
 
     public static GameState get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(FACTORY, NAME);

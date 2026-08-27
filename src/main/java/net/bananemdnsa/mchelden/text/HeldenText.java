@@ -187,6 +187,19 @@ public final class HeldenText {
     }
 
     /** Kurz und in der Actionbar: der Hinweis kommt beim Bauen oft. */
+    public static Component safeZoneEntered() {
+        return Component.translatable("mchelden.safezone.entered").withStyle(ChatFormatting.GREEN);
+    }
+
+    public static Component safeZoneLeft() {
+        return Component.translatable("mchelden.safezone.left").withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Muss den Grund nennen: eine unsichtbare Wand ohne Erklaerung wirkt wie ein Fehler. */
+    public static Component safeZoneDenied() {
+        return Component.translatable("mchelden.safezone.denied").withStyle(ChatFormatting.RED);
+    }
+
     public static Component wallBlocked() {
         return Component.translatable("mchelden.wall.blocked").withStyle(ChatFormatting.RED);
     }
