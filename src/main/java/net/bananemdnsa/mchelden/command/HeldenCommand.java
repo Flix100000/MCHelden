@@ -170,6 +170,7 @@ public final class HeldenCommand {
                                                         StringArgumentType.getString(context, "dauer"))))))
                         .then(Commands.literal("reset")
                                 .executes(context -> borderReset(context.getSource()))))
+                .then(ResetCommand.build())
                 .then(Commands.literal("time")
                         .then(Commands.literal("check")
                                 .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
