@@ -10,10 +10,10 @@ import net.bananemdnsa.mchelden.world.BorderStorm;
 import net.bananemdnsa.mchelden.world.DividerWall;
 import net.bananemdnsa.mchelden.world.FinalWarBar;
 import net.bananemdnsa.mchelden.world.SafeZone;
-import net.bananemdnsa.mchelden.world.SafeZone;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -28,9 +28,15 @@ public final class CombatEvents {
      *
      * <p>Bei Projektilen liefert {@code getEntity()} bereits den Schützen, ein Pfeil aus
      * hundert Metern zählt also genauso wie ein Schwertstreich.
+     *
+     * <p>Es zählen nur Treffer, die auch ankommen. In der Safezone wird der Schaden
+     * abgesagt — ohne diese Prüfung startete dort der Timer, obwohl niemand Schaden
+     * nimmt. Darum hängt der Listener auf {@link EventPriority#LOWEST}: erst sagt ab,
+     * wer absagen will, dann wird gezählt.
      */
     public static void onIncomingDamage(LivingIncomingDamageEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer victim)
+        if (event.isCanceled()
+                || !(event.getEntity() instanceof ServerPlayer victim)
                 || !(event.getSource().getEntity() instanceof ServerPlayer attacker)
                 || attacker.getUUID().equals(victim.getUUID())) {
             return;
@@ -98,7 +104,6 @@ public final class CombatEvents {
         FinalWarBar.tick(event.getServer());
         SafeZone.tickBurst(event.getServer());
         BorderStorm.tick(event.getServer());
-        SafeZone.tickBurst(event.getServer());
         PlaytimeTracker.tick(event.getServer());
         DividerWall.tick(event.getServer());
     }

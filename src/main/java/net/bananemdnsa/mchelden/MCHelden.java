@@ -27,6 +27,7 @@ import net.bananemdnsa.mchelden.text.HeldenText;
 import net.bananemdnsa.mchelden.text.StatusReport;
 
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -55,7 +56,10 @@ public class MCHelden {
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
         NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
         NeoForge.EVENT_BUS.addListener(HeartEvents::onRespawn);
-        NeoForge.EVENT_BUS.addListener(CombatEvents::onIncomingDamage);
+        // Ganz zuletzt: die Safezone und die Trennwand sagen Angriffe auf der normalen
+        // Stufe ab. Liefe der Combat-Handler wie jeder andere mit, stuende man in der
+        // Safezone im Timer, ohne einen Kratzer abbekommen zu haben.
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, CombatEvents::onIncomingDamage);
         NeoForge.EVENT_BUS.addListener(CombatEvents::onDeath);
         NeoForge.EVENT_BUS.addListener(CombatEvents::onLogout);
         NeoForge.EVENT_BUS.addListener(PlaytimeTracker::onLogout);
