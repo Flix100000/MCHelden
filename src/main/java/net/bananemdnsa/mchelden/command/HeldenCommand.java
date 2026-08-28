@@ -636,6 +636,18 @@ public final class HeldenCommand {
                         : posOrDash(vanilla) + (player.isRespawnForced() ? " (erzwungen)" : ""),
                 posOrDash(server.overworld().getSharedSpawnPos()))), false);
 
+        // Eine Welt aus einer frueheren Fassung traegt den Startpunkt noch als erzwungenen
+        // Respawnpunkt im Spieler-NBT. Niemand setzt ihn mehr, aber er steht da — und fuer
+        // die Regel sieht er aus wie ein Bett, es wird also nie neu gewuerfelt. Das ist von
+        // aussen nicht zu sehen, deswegen sagt es diese Zeile.
+        if (vanilla != null && player.isRespawnForced() && state != null
+                && vanilla.equals(state.getStartSpawn())) {
+            source.sendSuccess(() -> Component.literal(
+                    "Achtung: das ist kein Bett, sondern ein Alt-Eintrag aus einer frueheren "
+                            + "Fassung. Er verhindert das Neuwuerfeln. In einer neuen Welt "
+                            + "gibt es ihn nicht.").withStyle(ChatFormatting.YELLOW), false);
+        }
+
         source.sendSuccess(() -> Component.literal(String.format(
                 "Jetzt hier: %d/%d/%d",
                 player.getBlockX(), player.getBlockY(), player.getBlockZ())), false);
