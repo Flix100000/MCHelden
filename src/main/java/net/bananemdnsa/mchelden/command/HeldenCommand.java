@@ -614,9 +614,9 @@ public final class HeldenCommand {
     /**
      * Sagt, wo dieser Spieler beim naechsten Tod aufwacht.
      *
-     * <p>Der Startpunkt ist zugleich der Rueckfall-Respawn — aber Vanilla wirft seinen
-     * Respawnpunkt weg, sobald das Bett fehlt, und dann entscheidet der Weltspawn. Von
-     * aussen sieht beides gleich aus: man wacht irgendwo auf. Diese Zeile trennt es.
+     * <p>Ohne Bett wird bei jedem Tod neu gewuerfelt, mit Bett gilt das Bett. Von aussen
+     * sieht beides gleich aus — man wacht irgendwo auf. Diese Zeile trennt es, und sie
+     * nennt dazu den zuletzt gezogenen Punkt.
      */
     private static int debugRespawn(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
@@ -632,7 +632,7 @@ public final class HeldenCommand {
         source.sendSuccess(() -> Component.literal(String.format(
                 "Vanilla: %s | Weltspawn %s",
                 vanilla == null
-                        ? "kein Punkt — es gilt der Weltspawn"
+                        ? "kein Bett — beim naechsten Tod wird neu gewuerfelt"
                         : posOrDash(vanilla) + (player.isRespawnForced() ? " (erzwungen)" : ""),
                 posOrDash(server.overworld().getSharedSpawnPos()))), false);
 

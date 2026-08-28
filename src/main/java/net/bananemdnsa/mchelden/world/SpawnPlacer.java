@@ -81,22 +81,25 @@ public final class SpawnPlacer {
         store.setDirty();
 
         teleport(player, level, spawn);
-        player.setRespawnPosition(level.dimension(), spawn, player.getYRot(), true, false);
         return true;
     }
 
     /**
-     * Bringt einen Spieler auf seinen Startpunkt zurueck.
+     * Wuerfelt einen frischen Startpunkt auf der eigenen Seite und setzt den Spieler dorthin.
      *
      * <p>Fuer den Respawn ohne Bett: der Weltspawn liegt auf 0,0 und damit mitten in der
      * Trennwand.
      *
-     * <p>Ein Startpunkt unterhalb der Weltuntergrenze wird dabei <b>neu gesucht</b>. Solche
-     * gibt es: die erste Fassung dieser Klasse hat die Gelaendehoehe ueber
-     * {@code level.getHeightmapPos} bestimmt, und das gibt fuer ungeladene Chunks
-     * stillschweigend {@code -64} zurueck. Wer damit gestartet ist, faellt sonst bei jedem
-     * Respawn erneut aus der Welt — der Fehler waere gespeichert und wuerde sich nicht von
-     * selbst auswachsen.
+     * <p><b>Jedes Mal neu, nicht immer derselbe Fleck.</b> Frueher war der einmal gezogene
+     * Startpunkt zugleich ein erzwungener Vanilla-Respawnpunkt — man wachte damit bei jedem
+     * Tod exakt dort auf, und das liest sich wie ein fester Spawn. Wer kein Bett hat, ist
+     * jetzt verschollen, und zwar jedes Mal woanders.
+     *
+     * <p>Ein Bett bleibt davon unberuehrt: dann hat Vanilla einen Respawnpunkt, und diese
+     * Methode wird gar nicht erst gerufen.
+     *
+     * <p>Weil {@code takenSpawns} auch den bisherigen eigenen Punkt enthaelt, liegt der neue
+     * garantiert weit vom alten weg — und ebenso von denen der anderen.
      */
     public static void returnToStart(MinecraftServer server, ServerPlayer player) {
         PlayerStateStore store = PlayerStateStore.get(server);
@@ -106,29 +109,29 @@ public final class SpawnPlacer {
         }
 
         ServerLevel level = server.overworld();
-        BlockPos spawn = state.getStartSpawn();
 
-        if (spawn == null || spawn.getY() <= level.getMinBuildHeight()) {
-            spawn = findSpawn(level, state.getSide(), level.getRandom(), takenSpawns(store));
-            state.setStartSpawn(spawn);
-            store.setDirty();
-        }
+        // Jedes Mal frisch gewuerfelt. Der Startpunkt ist kein fester Wohnsitz, sondern der
+        // Ort, an dem man gerade aufwacht — wer kein Bett hat, ist verschollen, und zwar
+        // jedes Mal woanders.
+        //
+        // `takenSpawns` enthaelt auch den eigenen bisherigen Punkt, der neue liegt also
+        // garantiert weit vom alten weg.
+        BlockPos spawn = findSpawn(level, state.getSide(), level.getRandom(), takenSpawns(store));
 
-        // <b>Immer neu registrieren, nicht nur beim Neusuchen.</b> Vanilla wirft den
-        // Respawnpunkt weg, sobald das Bett fehlt — und die frueheren Fassungen setzten ihn
-        // dann nie wieder. Wer einmal ohne Bett dastand, landete von da an bei jedem Tod auf
-        // dem Weltspawn, und nur das Netz weiter unten holte ihn zurueck.
-        player.setRespawnPosition(level.dimension(), spawn, player.getYRot(), true, false);
+        state.setStartSpawn(spawn);
+        store.setDirty();
 
         teleport(player, level, spawn);
     }
 
     /**
-     * Holt einen Respawnten auf seine Seite zurueck.
+     * Raeumt auf, was Vanilla beim Respawn falsch entschieden hat.
      *
-     * <p>Der Weltspawn liegt auf 0,0 und damit mitten in der Trennwand — wer ohne Bett
-     * stirbt, landete sonst genau dort. Und wer sein Bett auf der falschen Seite hat,
-     * stuende jenseits einer Wand, durch die er nicht zurueckkommt.
+     * <p>Drei Faelle: wer kein Bett hat, wird auf einen frisch gewuerfelten Punkt seiner
+     * Seite gesetzt statt auf den Weltspawn — der liegt auf 0,0 und damit mitten in der
+     * Trennwand. Wer sein Bett auf der falschen Seite hat, stuende jenseits einer Wand,
+     * durch die er nicht zurueckkommt. Und wer unter der Welt landet, hat einen kaputten
+     * gespeicherten Punkt erwischt.
      */
     public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || player.getServer() == null) {
@@ -151,10 +154,13 @@ public final class SpawnPlacer {
                 && (!side.contains(player.getX())
                         || Math.abs(player.getX()) < DividerWall.MARGIN);
 
-        // Ohne Bett und ohne Anker setzt Vanilla auf den Weltspawn — und der liegt auf
-        // 0,0, also mitten auf der Trennlinie. Das zaehlt <em>unabhaengig von der Wand</em>:
-        // die frueheren Fassungen pruefen die Seite nur, solange sie steht, und nach dem
-        // Wandfall landete deswegen jeder ohne Bett fuer den Rest des Spiels dort.
+        // Kein Bett und kein Anker: dann setzt Vanilla auf den Weltspawn, und der liegt
+        // auf 0,0 — mitten auf der Trennlinie. Stattdessen wird gewuerfelt.
+        //
+        // <b>Der Startpunkt ist bewusst kein Vanilla-Respawnpunkt mehr.</b> Waere er einer,
+        // liesse sich "hat ein Bett" nicht mehr von "hat unseren Punkt" unterscheiden — und
+        // man wachte bei jedem Tod am selben Fleck auf, was sich wie ein fester Spawn liest.
+        // So ist die Frage genau Vanillas eigene: gibt es ein Bett oder nicht.
         boolean noBed = player.getRespawnPosition() == null;
 
         if (belowWorld || wrongSide || noBed) {
