@@ -7,6 +7,9 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 authors="Bananemdnsa"
+logoFile="icon.png"
+# The logo is pixel art at 512x512; the default smoothing turns it to mush.
+logoBlur=false
 description='''${mod_description}'''
 
 [[mixins]]
