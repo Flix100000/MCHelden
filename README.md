@@ -5,8 +5,9 @@ around a single scarce resource: hearts.
 
 **Minecraft 1.21.1 · NeoForge 21.1.248 · Java 21**
 
-The mod builds game systems only. It does not touch world generation, does not block items,
-and ships no data pack of its own — that is History Stages' job.
+The mod builds game systems, plus two deliberate loot and spawn rules. It does not touch world
+generation and does not block items. What data it does ship *modifies* vanilla tables rather
+than replacing them, so it sits alongside History Stages' data pack instead of fighting it.
 
 It has to be installed on **both sides**. The rules live on the server, but the HUDs, the
 grave screen and the renderers for the wall and the safe zone are client code.
@@ -27,6 +28,8 @@ grave screen and the renderers for the wall and the safe zone are client code.
   - [Daily playtime](#daily-playtime)
   - [Starting spawn](#starting-spawn)
   - [The world border and the Final War](#the-world-border-and-the-final-war)
+  - [The arena centre](#the-arena-centre)
+  - [Loot and spawns](#loot-and-spawns)
 - [Command reference](#command-reference)
   - [Players and hearts](#players-and-hearts)
   - [Combat](#combat)
@@ -34,6 +37,7 @@ grave screen and the renderers for the wall and the safe zone are client code.
   - [Phase control](#phase-control)
   - [Wall](#wall)
   - [Final War and border](#final-war-and-border)
+  - [Arena centre](#arena-centre)
   - [Playtime](#playtime)
   - [Reset](#reset)
   - [Debug](#debug)
@@ -50,7 +54,7 @@ fourth heart exists, but there is exactly one way to get it: kill the one player
 roll paired you with — who is hunting you at the same time.
 
 Death is defined by the combat timer, not by the damage source. Get hit by a player and you
-are "in combat" for up to three minutes. Die during that window — to the player, to a fall
+are "in combat" for at least thirty seconds, and for up to three minutes in a long fight. Die during that window — to the player, to a fall
 while fleeing, to lava, to anything — and it counts as a player kill. Log out during that
 window and it counts as a death too.
 
@@ -85,10 +89,17 @@ zone entry all read it.
 
 | | |
 |---|---|
-| Per hit | +30 seconds |
-| Cap | 180 seconds |
+| First hit of a series | starts the timer at 30 seconds |
+| Every fifth hit after that | +30 seconds |
+| Cap | 180 seconds — reached at the 25th hit |
+| A series ends | after 30 seconds without a hit; the next hit starts a new one |
+| Counted | per player, across all opponents at once |
 | Applies to | both players — attacker and target |
 | Projectiles | count as hits; an arrow from a hundred blocks away is the same as a sword swing |
+
+Not every hit extends the timer, on purpose. When each one did, six swings pinned both players
+at the three-minute cap — an ordinary fight maxed it out immediately. Only hits that actually
+land are counted: inside the safe zone damage is cancelled, so swinging there starts nothing.
 
 While the timer runs:
 
@@ -195,7 +206,7 @@ back) and makes a state where phase and limit disagree impossible.
 
 ### The dividing wall
 
-An invisible wall at **X = 0**.
+An invisible wall through the arena centre — **X = 0** unless the arena has been moved.
 
 Minecraft only supports *one* world border per dimension, and that one is taken by the world
 edge. So the wall is rebuilt from scratch: a coordinate check on the server, a dedicated
@@ -207,12 +218,12 @@ items. A rule with no exceptions is one nobody has to look up.
 
 ### The safe zone
 
-A cylinder of radius 50 around the world axis at 0,0 — a hundred blocks across, halved by the
+A cylinder of radius 50 around the arena centre — a hundred blocks across, halved by the
 dividing wall into fifty per side.
 
 A cylinder and not a sphere, because you leave a sphere by building upward: put a platform
-down at 0,0 and you would suddenly be attackable without anything having changed. Height does
-not count, so the zone needs no center point — only a radius.
+down in the middle and you would suddenly be attackable without anything having changed.
+Height does not count, so the zone needs no vertical centre — only a radius.
 
 It is not spawn protection; starting spawns are scattered across the world. The point is that
 the dome sits on the wall, and with proximity voice chat you can meet there for five days and
@@ -263,11 +274,11 @@ Only the position within it is random.
 
 | | |
 |---|---|
-| Starting size | 2000 |
+| Starting size | 4000 |
 | Final size | 160 |
 | Default shrink duration | 2h30m |
 
-A red boss bar shows the arena during the Final War: full at 2000, empty at 160. It rebuilds
+A red boss bar shows the arena during the Final War: full at 4000, empty at 160. It rebuilds
 itself from server state once per second rather than being maintained at start, join and end,
 so three cases handle themselves — joining mid-Final-War shows it, leaving removes you from
 it, and it comes back after a server restart on its own.
@@ -280,6 +291,45 @@ at 160 the effects stop; otherwise the last stand would be a permanent thunderst
 tuned out after ten minutes.
 
 Nobody respawns outside the border.
+
+### The arena centre
+
+Safe zone, dividing wall and world border all hang off one point. By default that point is
+0,0, and `/helden center` moves all three together.
+
+Moving only some of them would be worse than not moving any: leave the wall at X = 0 while the
+border sits elsewhere and one side ends up with more land than the other. So there is exactly
+one command, and it moves the lot.
+
+The centre is stored with the world, not in the config — a world that has been moved stays
+moved across restarts. `/helden reset all` deliberately leaves it alone, for the same reason it
+leaves the border size alone: where the arena sits is world layout, not the state of a round.
+
+The config file `mchelden-server.toml` holds where a **fresh** world puts its arena, and it is
+what `/helden center reset` returns to. That is the one thing a command cannot cover, because
+it has to be set before the world exists.
+
+```toml
+[arena]
+	center_x = 0
+	center_z = 0
+```
+
+### Loot and spawns
+
+Two deliberate exceptions to "game systems only". Both are data files that modify vanilla
+tables instead of replacing them, so other mods and data packs keep working.
+
+**Ancient city trims in shipwrecks.** The two trims that only exist in the ancient city —
+`silence` and `ward` — also turn up in all three shipwreck chests, at exactly the chances they
+have at home: 1/80 for silence, 4/80 for ward. The numbers are not copied by hand; a test
+compares them against Mojang's own `ancient_city.json`, so a vanilla change to those weights
+shows up as a failing test. The shipwreck's own `coast` trim is untouched.
+
+**Deserts spawn nothing but endermen.** Every hostile mob is removed from the desert biome,
+and the enderman is given the End's pack size of exactly four, so they arrive as often as they
+do there. Bats, rabbits and glow squid stay. Note that husks only ever spawned in deserts, so
+this takes them out of the game.
 
 ---
 
@@ -344,8 +394,21 @@ be no state that only goes forward.
 |---|---|
 | `/helden finalwar start [duration]` | Starts the Final War through the phase system, so countdown, storm, dome and border stay one event. Default duration 2h30m |
 | `/helden finalwar stop` | Rolls back to War — including mid-countdown |
-| `/helden border shrink <size> <duration>` | The bare tool: shrinks the border with no phase and no boss bar. `size` 16–2000 |
-| `/helden border reset` | Back to 2000 |
+| `/helden border shrink <size> <duration>` | The bare tool: shrinks the border with no phase and no boss bar. `size` 16–4000 |
+| `/helden border reset` | Back to 4000. Needed once on a world created before the size changed — the border is only set on a world's first start |
+
+### Arena centre
+
+| Command | Effect |
+|---|---|
+| `/helden center` | Where the arena sits, plus where the world border actually is. Warns if the two have drifted apart |
+| `/helden center <x> <z>` | Moves safe zone, dividing wall and world border together. Broadcast |
+| `/helden center here` | The same, onto your own position |
+| `/helden center reset` | Back to the centre configured in `mchelden-server.toml` |
+
+An operator can always set `/worldborder center` by hand, and then the dome no longer sits in
+the middle of the world. `/helden center` says so rather than leaving it to be noticed from
+the ground.
 
 ### Playtime
 
@@ -422,8 +485,11 @@ gradlew test
 `gradlew --refresh-dependencies` helps with dependency trouble.
 
 Tests are plain JUnit 5 over the parts that can be checked without starting the game: the
-grave split, bounty pairing, the border and storm math, the safe zone geometry, duration
-parsing, the playtime tracker and the persisted state. Rules that touch every death in the
+grave split, bounty pairing, the border and storm math, the safe zone geometry, the combat
+timer's hit series, the elimination announcement's fit, duration parsing, the playtime tracker
+and the persisted state. The loot and spawn tests read Mojang's own data files out of the
+NeoForge artifact and compare against them, so a vanilla change to a weight or a mob list
+shows up as a failing test rather than as a surprise in-game. Rules that touch every death in the
 project and are partly random are not something trying it out in-game can prove.
 
 CI runs `./gradlew build` on JDK 21 for every push and pull request.
@@ -447,7 +513,17 @@ The mod uses official Mojang mappings; their license is at
 | `playtime` | Daily allowance |
 | `state` | Persisted game and player state |
 | `text` | All user-facing strings |
-| `world` | Wall, safe zone, border, storm, spawn placement, boss bar |
+| `world` | Wall, safe zone, border, arena centre, storm, spawn placement, boss bar |
+
+`MCHeldenConfig` at the root holds the one server setting; everything else that can change
+lives in the world's saved state.
+
+Data files under `src/main/resources/data` carry the loot and spawn rules: a global loot
+modifier for the shipwreck trims and two biome modifiers for the desert. NeoForge ships
+`add_table` and `remove_spawns` ready-made; `spawn_pack_size` is the mod's own, because
+NeoForge can add and remove spawns but not *change* one, and combining the two does not work —
+adding runs in an earlier phase than removing, so a mob removed and re-added with a new pack
+size is simply gone.
 
 ---
 
