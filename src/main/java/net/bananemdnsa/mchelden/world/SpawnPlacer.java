@@ -112,8 +112,13 @@ public final class SpawnPlacer {
             spawn = findSpawn(level, state.getSide(), level.getRandom(), takenSpawns(store));
             state.setStartSpawn(spawn);
             store.setDirty();
-            player.setRespawnPosition(level.dimension(), spawn, player.getYRot(), true, false);
         }
+
+        // <b>Immer neu registrieren, nicht nur beim Neusuchen.</b> Vanilla wirft den
+        // Respawnpunkt weg, sobald das Bett fehlt — und die frueheren Fassungen setzten ihn
+        // dann nie wieder. Wer einmal ohne Bett dastand, landete von da an bei jedem Tod auf
+        // dem Weltspawn, und nur das Netz weiter unten holte ihn zurueck.
+        player.setRespawnPosition(level.dimension(), spawn, player.getYRot(), true, false);
 
         teleport(player, level, spawn);
     }
@@ -146,7 +151,13 @@ public final class SpawnPlacer {
                 && (!side.contains(player.getX())
                         || Math.abs(player.getX()) < DividerWall.MARGIN);
 
-        if (belowWorld || wrongSide) {
+        // Ohne Bett und ohne Anker setzt Vanilla auf den Weltspawn — und der liegt auf
+        // 0,0, also mitten auf der Trennlinie. Das zaehlt <em>unabhaengig von der Wand</em>:
+        // die frueheren Fassungen pruefen die Seite nur, solange sie steht, und nach dem
+        // Wandfall landete deswegen jeder ohne Bett fuer den Rest des Spiels dort.
+        boolean noBed = player.getRespawnPosition() == null;
+
+        if (belowWorld || wrongSide || noBed) {
             returnToStart(server, player);
         }
 

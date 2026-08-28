@@ -43,6 +43,7 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.border.BorderStatus;
 import net.minecraft.world.level.border.WorldBorder;
@@ -129,6 +130,8 @@ public final class HeldenCommand {
                                 .executes(context -> debugRender(context.getSource())))
                         .then(Commands.literal("border")
                                 .executes(context -> debugBorder(context.getSource())))
+                        .then(Commands.literal("respawn")
+                                .executes(context -> debugRespawn(context.getSource())))
                         .then(Commands.literal("death")
                                 .executes(context -> debugDeath(context.getSource())))
                         .then(Commands.literal("animation")
@@ -606,6 +609,41 @@ public final class HeldenCommand {
         server.getPlayerList().broadcastSystemMessage(
                 up ? HeldenText.wallRaised() : HeldenText.wallDropped(), false);
         return 1;
+    }
+
+    /**
+     * Sagt, wo dieser Spieler beim naechsten Tod aufwacht.
+     *
+     * <p>Der Startpunkt ist zugleich der Rueckfall-Respawn — aber Vanilla wirft seinen
+     * Respawnpunkt weg, sobald das Bett fehlt, und dann entscheidet der Weltspawn. Von
+     * aussen sieht beides gleich aus: man wacht irgendwo auf. Diese Zeile trennt es.
+     */
+    private static int debugRespawn(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        MinecraftServer server = source.getServer();
+        PlayerState state = PlayerStateStore.get(server).find(player.getUUID());
+
+        source.sendSuccess(() -> Component.literal(String.format(
+                "Zustand: Seite %s | Startpunkt %s",
+                state == null || state.getSide() == null ? "—" : state.getSide().getId(),
+                state == null ? "—" : posOrDash(state.getStartSpawn()))), false);
+
+        BlockPos vanilla = player.getRespawnPosition();
+        source.sendSuccess(() -> Component.literal(String.format(
+                "Vanilla: %s | Weltspawn %s",
+                vanilla == null
+                        ? "kein Punkt — es gilt der Weltspawn"
+                        : posOrDash(vanilla) + (player.isRespawnForced() ? " (erzwungen)" : ""),
+                posOrDash(server.overworld().getSharedSpawnPos()))), false);
+
+        source.sendSuccess(() -> Component.literal(String.format(
+                "Jetzt hier: %d/%d/%d",
+                player.getBlockX(), player.getBlockY(), player.getBlockZ())), false);
+        return 1;
+    }
+
+    private static String posOrDash(@Nullable BlockPos pos) {
+        return pos == null ? "—" : pos.getX() + "/" + pos.getY() + "/" + pos.getZ();
     }
 
     /**
