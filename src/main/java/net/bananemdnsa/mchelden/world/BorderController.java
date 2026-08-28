@@ -25,8 +25,8 @@ import net.minecraft.world.level.border.WorldBorder;
  * bei der {@link SafeZone} den gespeicherten Mittelpunkt weggeraeumt hat.
  */
 public final class BorderController {
-    /** Kantenlaenge der Welt. Die Border steht bei plusminus 1000. */
-    public static final double START_SIZE = 2000.0;
+    /** Kantenlaenge der Welt. Die Border steht bei plusminus 2000. */
+    public static final double START_SIZE = 4000.0;
 
     /** Kantenlaenge der Arena am Ende: zehn mal zehn Chunks. */
     public static final double FINAL_SIZE = 160.0;
@@ -38,7 +38,7 @@ public final class BorderController {
     }
 
     /**
-     * Wie voll der Balken der Bossbar steht: 1 bei 2000, 0 bei 160.
+     * Wie voll der Balken der Bossbar steht: 1 bei 4000, 0 bei 160.
      *
      * <p>Reine Rechnung, damit sie ohne Spielstart pruefbar ist. Geklammert, weil ein Op
      * die Border jederzeit von Hand woanders hinsetzen darf.
@@ -51,10 +51,10 @@ public final class BorderController {
      * Setzt die Border auf Weltgroesse — aber nur beim allerersten Start einer Welt.
      *
      * <p>Ohne das haette eine frische Welt die Vanilla-Border von sechzig Millionen, und
-     * die 2000 aus der Spec waeren Handarbeit, die genau einmal jemand vergisst.
+     * die Weltgroesse waere Handarbeit, die genau einmal jemand vergisst.
      *
      * <p><b>Nur einmal, nicht bei jedem Start.</b> Sonst wuerfe ein Serverneustart mitten
-     * im Final War die Arena zurueck auf 2000 — und die Wiederaufnahme, die Vanilla gratis
+     * im Final War die Arena zurueck auf 4000 — und die Wiederaufnahme, die Vanilla gratis
      * mitbringt, waere umsonst. Aus demselben Grund bleibt ein von Hand gesetztes Ziel
      * stehen.
      */

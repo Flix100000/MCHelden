@@ -50,7 +50,7 @@ class GameStateTest {
     /**
      * Der Border-Schalter ist der Grund, warum ein Neustart mitten im Final War die Arena
      * nicht zurueckwirft. Ueberlebt er die Speicherrunde nicht, setzt die Mod bei jedem
-     * Start die Border erneut auf 2000 — und zwei Stunden Schrumpfen waeren weg.
+     * Start die Border erneut auf 4000 — und zwei Stunden Schrumpfen waeren weg.
      */
     @Test
     void borderSchalterUeberlebtDieSpeicherrunde() {

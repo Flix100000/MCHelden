@@ -24,7 +24,7 @@ import net.minecraft.world.BossEvent;
  * nach einem Serverneustart steht sie wieder da, weil die Phase gespeichert ist und die
  * Border ihren Lauf von allein fortsetzt.
  *
- * <p>Der Balken ist die Arena: voll bei 2000, leer bei 160. Beide Zahlen daneben kommen
+ * <p>Der Balken ist die Arena: voll bei 4000, leer bei 160. Beide Zahlen daneben kommen
  * frisch aus der Border, es gibt also keinen Wert, der davonlaufen koennte.
  */
 public final class FinalWarBar {

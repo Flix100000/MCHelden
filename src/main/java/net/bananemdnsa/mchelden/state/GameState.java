@@ -32,7 +32,7 @@ public class GameState extends SavedData {
      * Hat die Mod die Weltborder schon einmal auf ihre Groesse gesetzt?
      *
      * <p>Ein gespeicherter Schalter, weil die Antwort sich nicht ableiten laesst: eine
-     * Border von 2000 kann heissen "die Mod hat sie gesetzt" oder "ein Op hat sie zufaellig
+     * Border von 4000 kann heissen "die Mod hat sie gesetzt" oder "ein Op hat sie zufaellig
      * genau dorthin gesetzt".
      *
      * <p><b>Nur einmal.</b> Bei jedem Start zu setzen wuerde einen laufenden Final War

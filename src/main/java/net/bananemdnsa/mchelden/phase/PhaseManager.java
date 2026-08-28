@@ -284,7 +284,7 @@ public final class PhaseManager {
     /**
      * Laesst weltweit ein Gewitter losbrechen.
      *
-     * <p>Der einzige Beat, den zwanzig ueber 2000 mal 2000 verteilte Spieler gleichzeitig
+     * <p>Der einzige Beat, den zwanzig ueber 4000 mal 4000 verteilte Spieler gleichzeitig
      * <em>sehen</em>. Die Kuppel sieht nur, wer bei 0,0 steht — dasselbe Problem wie bei
      * der verworfenen Welle aus Etappe 7, nur ohne Loesung: ein Zylinder mit fuenfzig
      * Bloecken Radius laesst sich nicht so inszenieren, dass ihn die ganze Welt sieht.
