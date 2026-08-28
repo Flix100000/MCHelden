@@ -80,6 +80,23 @@ class GameStateTest {
         assertNull(Phase.FINAL_WAR.next());
     }
 
+    /**
+     * Welten von vor der Umstellung tragen die deutschen Kennungen in ihrer Datei. Ohne das
+     * Mitlesen stuenden sie nach dem Laden still wieder im Aufbau.
+     */
+    @Test
+    void alteDeutscheIdsWerdenNochGelesen() {
+        assertEquals(Phase.AUFBAU, Phase.byId("aufbau"));
+        assertEquals(Phase.KRIEG, Phase.byId("krieg"));
+    }
+
+    @Test
+    void dieIdsSindEnglisch() {
+        assertEquals("buildup", Phase.AUFBAU.getId());
+        assertEquals("war", Phase.KRIEG.getId());
+        assertEquals("finalwar", Phase.FINAL_WAR.getId());
+    }
+
     @Test
     void jedeIdLaesstSichZurueckaufloesen() {
         for (Phase phase : Phase.values()) {

@@ -170,8 +170,8 @@ the pairing are cleared.
 
 | Phase | ID | What changes |
 |---|---|---|
-| Buildup | `aufbau` | Wall up, safe zone active, one-hour daily playtime limit |
-| War | `krieg` | Wall falls, no time limit |
+| Buildup | `buildup` | Wall up, safe zone active, one-hour daily playtime limit |
+| War | `war` | Wall falls, no time limit |
 | Final War | `finalwar` | Safe zone shatters, world border starts shrinking, boss bar appears |
 
 Forward transitions get a countdown and a staged announcement — it is the biggest moment of
@@ -190,7 +190,7 @@ the same way: the storm rolls in and the dome glows itself up to breaking point 
 countdown runs.
 
 The playtime limit is deliberately not a stored switch — it is a question asked of the current
-phase. That makes the reverse direction work by itself (`phase set aufbau` brings the limit
+phase. That makes the reverse direction work by itself (`phase set buildup` brings the limit
 back) and makes a state where phase and limit disagree impossible.
 
 ### The dividing wall
@@ -324,7 +324,7 @@ Heart changes are broadcast. `/helden info` is private to the caller.
 |---|---|
 | `/helden phase info` | Current phase |
 | `/helden phase next` | Advance one phase, with countdown and announcement |
-| `/helden phase set <aufbau\|krieg\|finalwar>` | Jump to a phase. Forward gets the staged transition, backward is a silent correction |
+| `/helden phase set <buildup\|war\|finalwar>` | Jump to a phase. Forward gets the staged transition, backward is a silent correction |
 
 A running countdown is replaced rather than queued, so a mistyped command is not irreversible.
 
