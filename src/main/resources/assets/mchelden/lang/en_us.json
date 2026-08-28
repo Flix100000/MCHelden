@@ -6,6 +6,7 @@
   "mchelden.elimination.kick.body": "Your hearts are used up.\nThe project is over for you.",
   "mchelden.elimination.title": "%s has been eliminated",
   "mchelden.elimination.subtitle": "killed by %s",
+  "mchelden.elimination.unknown": "A player",
   "mchelden.survivors": "%s players left",
   "mchelden.heart.lost": "A heart lost — %s remaining",
   "mchelden.heart.gained": "A heart gained — %s now",

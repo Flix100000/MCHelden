@@ -51,6 +51,10 @@ public final class NetworkHandler {
                 SafeZoneShatterPayload.TYPE,
                 SafeZoneShatterPayload.STREAM_CODEC,
                 NetworkHandler::handleSafeZoneShatterOnClient);
+        registrar.playToClient(
+                EliminationPayload.TYPE,
+                EliminationPayload.STREAM_CODEC,
+                NetworkHandler::handleEliminationOnClient);
     }
 
     /**
@@ -142,6 +146,11 @@ public final class NetworkHandler {
         context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onBountyRoll(payload));
     }
 
+    private static void handleEliminationOnClient(EliminationPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onElimination(
+                payload.victim(), payload.killer()));
+    }
+
     private static void handleRenderDebugOnClient(RenderDebugPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             net.bananemdnsa.mchelden.client.render.WallRenderer.report();
@@ -176,6 +185,18 @@ public final class NetworkHandler {
     }
 
     /** Fragt einen Client, was er ueber Trennwand und Safezone weiss. */
+    /**
+     * Sagt allen, dass jemand ausgeschieden ist.
+     *
+     * <p>An alle, nicht nur an die Beteiligten: wer noch im Spiel ist, soll mitbekommen,
+     * dass ein Gegner weniger unterwegs ist.
+     */
+    public static void sendElimination(MinecraftServer server, String victim, String killer) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(player, new EliminationPayload(victim, killer));
+        }
+    }
+
     public static void askRenderReport(ServerPlayer player) {
         PacketDistributor.sendToPlayer(player, new RenderDebugPayload());
     }

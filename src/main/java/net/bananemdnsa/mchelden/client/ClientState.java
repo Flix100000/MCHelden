@@ -88,6 +88,14 @@ public final class ClientState {
      */
     private static int lossTicks;
 
+    /**
+     * Die Ansage beim Ausscheiden. Sie laeuft wie ein Vanilla-Titel, wird aber selbst
+     * gezeichnet — der Vanilla-Titel vergroessert fest vierfach und lief aus dem Bild.
+     */
+    private static int eliminationTicks;
+    private static String eliminationVictim = "";
+    private static String eliminationKiller = "";
+
     /** Combat-Timer. Der Server schickt nur Aenderungen, heruntergezaehlt wird hier. */
     private static int combatTicks;
     /** Laeuft kurz nach jedem Treffer, damit der Balken sichtbar aufleuchtet. */
@@ -250,6 +258,14 @@ public final class ClientState {
         lossTicks = LOSS_TOTAL_TICKS;
     }
 
+    /** Startet die Ansage, dass jemand ausgeschieden ist. */
+    public static void onElimination(String victim, String killer) {
+        eliminationVictim = victim;
+        eliminationKiller = killer;
+        eliminationTicks =
+                net.bananemdnsa.mchelden.client.hud.EliminationAnnouncement.TOTAL_TICKS;
+    }
+
     /**
      * Uebernimmt den Stand vom Server. 0 bedeutet: Kampf vorbei.
      *
@@ -397,6 +413,9 @@ public final class ClientState {
         if (bountyCloseTicks > 0) {
             bountyCloseTicks--;
         }
+        if (eliminationTicks > 0) {
+            eliminationTicks--;
+        }
 
         if (lossTicks <= 0) {
             return;
@@ -443,6 +462,23 @@ public final class ClientState {
         }
     }
 
+    public static boolean isEliminationRunning() {
+        return eliminationTicks > 0;
+    }
+
+    /** Verbleibende Ticks der Ansage, mit Teiltick fuer eine gleichmaessige Blende. */
+    public static float eliminationTicksLeft(float partialTick) {
+        return Math.max(0f, eliminationTicks - partialTick);
+    }
+
+    public static String eliminationVictim() {
+        return eliminationVictim;
+    }
+
+    public static String eliminationKiller() {
+        return eliminationKiller;
+    }
+
     public static boolean isLossRunning() {
         return lossTicks > 0;
     }
@@ -484,6 +520,9 @@ public final class ClientState {
         safeZoneShatterTicks = -1;
         DividerWall.setClientEdge(Double.MAX_VALUE);
         lossTicks = 0;
+        eliminationTicks = 0;
+        eliminationVictim = "";
+        eliminationKiller = "";
         combatTicks = 0;
         combatFlashTicks = 0;
         combatEnterTicks = 0;

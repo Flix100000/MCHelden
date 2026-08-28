@@ -26,16 +26,6 @@ public final class HeldenText {
         return Component.translatable("mchelden.elimination.spectator").withStyle(ChatFormatting.RED);
     }
 
-    public static Component eliminationTitle(String victim) {
-        return Component.translatable("mchelden.elimination.title", victim).withStyle(ChatFormatting.RED);
-    }
-
-    public static Component eliminationSubtitle(String killer) {
-        return killer.isEmpty()
-                ? Component.empty()
-                : Component.translatable("mchelden.elimination.subtitle", killer).withStyle(ChatFormatting.GRAY);
-    }
-
     public static Component survivorCount(int alive) {
         return Component.translatable("mchelden.survivors", alive).withStyle(ChatFormatting.GRAY);
     }

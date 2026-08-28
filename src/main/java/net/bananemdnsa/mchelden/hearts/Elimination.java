@@ -3,12 +3,11 @@ package net.bananemdnsa.mchelden.hearts;
 import java.util.UUID;
 
 import net.bananemdnsa.mchelden.bounty.BountyManager;
+import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.text.HeldenText;
 
-import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
-import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
@@ -89,14 +88,15 @@ public final class Elimination {
         BountyManager.syncPartnerOf(server, uuid);
     }
 
+    /**
+     * Die grosse Ansage, dazu die Zahl der Verbliebenen im Chat.
+     *
+     * <p>Bewusst kein Vanilla-Titel mehr: der vergroessert fest vierfach und bricht nicht um,
+     * womit die Zeile seitlich aus dem Bild lief. Der Client bekommt jetzt nur die Namen und
+     * zeichnet die Ansage in einer Groesse, die auf den Bildschirm passt.
+     */
     private static void announce(MinecraftServer server, String victim, String killer, int alive) {
-        String name = victim.isEmpty() ? "Ein Spieler" : victim;
-
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            player.connection.send(new ClientboundSetTitleTextPacket(HeldenText.eliminationTitle(name)));
-            player.connection.send(new ClientboundSetSubtitleTextPacket(HeldenText.eliminationSubtitle(killer)));
-        }
-
+        NetworkHandler.sendElimination(server, victim, killer);
         server.getPlayerList().broadcastSystemMessage(HeldenText.survivorCount(alive), false);
     }
 }

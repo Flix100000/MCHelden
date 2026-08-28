@@ -4,6 +4,7 @@ import net.bananemdnsa.mchelden.client.ClientState;
 import net.bananemdnsa.mchelden.client.hud.BountyHud;
 import net.bananemdnsa.mchelden.client.hud.BountyRollOverlay;
 import net.bananemdnsa.mchelden.client.hud.CombatHud;
+import net.bananemdnsa.mchelden.client.hud.EliminationOverlay;
 import net.bananemdnsa.mchelden.client.hud.HeartHud;
 import net.bananemdnsa.mchelden.client.hud.HeartLossOverlay;
 import net.bananemdnsa.mchelden.client.hud.PlaytimeHud;
@@ -52,6 +53,7 @@ public class MCHeldenClient {
         event.registerAbove(VanillaGuiLayers.HOTBAR, BountyHud.LAYER_ID, BountyHud::render);
         event.registerAboveAll(HeartLossOverlay.LAYER_ID, HeartLossOverlay::render);
         event.registerAboveAll(BountyRollOverlay.LAYER_ID, BountyRollOverlay::render);
+        event.registerAboveAll(EliminationOverlay.LAYER_ID, EliminationOverlay::render);
     }
 
     @SubscribeEvent
