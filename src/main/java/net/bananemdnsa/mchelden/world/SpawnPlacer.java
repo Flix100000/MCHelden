@@ -150,9 +150,10 @@ public final class SpawnPlacer {
         boolean belowWorld = player.getY() <= server.overworld().getMinBuildHeight();
         // Der Abstand zur Linie zaehlt mit: bei exakt x = 0 besteht ein Ost-Spieler die
         // Seitenpruefung — genau null zaehlt als Osten — und stuende trotzdem in der Wand.
+        double center = ArenaCenter.x(server);
         boolean wrongSide = DividerWall.isUp(server)
-                && (!side.contains(player.getX())
-                        || Math.abs(player.getX()) < DividerWall.MARGIN);
+                && (!side.contains(player.getX() - center)
+                        || Math.abs(player.getX() - center) < DividerWall.MARGIN);
 
         // Kein Bett und kein Anker: dann setzt Vanilla auf den Weltspawn, und der liegt
         // auf 0,0 — mitten auf der Trennlinie. Stattdessen wird gewuerfelt.
@@ -288,12 +289,13 @@ public final class SpawnPlacer {
 
     private static int randomX(ServerLevel level, Side side, RandomSource random) {
         int limit = halfWidth(level) - BORDER_MARGIN;
-        return side.getSign() * (WALL_MARGIN + random.nextInt(Math.max(1, limit - WALL_MARGIN)));
+        return (int) ArenaCenter.x(level)
+                + side.getSign() * (WALL_MARGIN + random.nextInt(Math.max(1, limit - WALL_MARGIN)));
     }
 
     private static int randomZ(ServerLevel level, RandomSource random) {
         int limit = halfWidth(level) - BORDER_MARGIN;
-        return random.nextInt(2 * limit) - limit;
+        return (int) ArenaCenter.z(level) + random.nextInt(2 * limit) - limit;
     }
 
     private static int halfWidth(ServerLevel level) {
@@ -332,9 +334,10 @@ public final class SpawnPlacer {
      * die er absichern soll — genau daran ist die erste Fassung gescheitert.
      */
     private static BlockPos surfaceFallback(ServerLevel level, Side side) {
-        int x = side.getSign() * (halfWidth(level) / 2);
-        BlockPos surface = surfaceAt(level, x, 0);
-        return surface != null ? surface : new BlockPos(x, level.getSeaLevel() + 1, 0);
+        int x = (int) ArenaCenter.x(level) + side.getSign() * (halfWidth(level) / 2);
+        int z = (int) ArenaCenter.z(level);
+        BlockPos surface = surfaceAt(level, x, z);
+        return surface != null ? surface : new BlockPos(x, level.getSeaLevel() + 1, z);
     }
 
     private static double nearest(BlockPos candidate, List<BlockPos> taken) {

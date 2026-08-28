@@ -31,6 +31,7 @@ import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.text.DurationText;
 import net.bananemdnsa.mchelden.text.HeldenText;
+import net.bananemdnsa.mchelden.world.ArenaCenter;
 import net.bananemdnsa.mchelden.world.BorderController;
 import net.bananemdnsa.mchelden.world.BorderStorm;
 import net.bananemdnsa.mchelden.world.DividerWall;
@@ -174,6 +175,18 @@ public final class HeldenCommand {
                                                         StringArgumentType.getString(context, "dauer"))))))
                         .then(Commands.literal("reset")
                                 .executes(context -> borderReset(context.getSource()))))
+                .then(Commands.literal("center")
+                        .executes(context -> centerShow(context.getSource()))
+                        .then(Commands.literal("here")
+                                .executes(context -> centerHere(context.getSource())))
+                        .then(Commands.literal("reset")
+                                .executes(context -> centerReset(context.getSource())))
+                        .then(Commands.argument("x", IntegerArgumentType.integer())
+                                .then(Commands.argument("z", IntegerArgumentType.integer())
+                                        .executes(context -> centerMove(
+                                                context.getSource(),
+                                                IntegerArgumentType.getInteger(context, "x"),
+                                                IntegerArgumentType.getInteger(context, "z"))))))
                 .then(ResetCommand.build())
                 .then(Commands.literal("time")
                         .then(Commands.literal("check")
@@ -771,6 +784,51 @@ public final class HeldenCommand {
         String shown = DurationText.clock(millis);
         source.sendSuccess(() -> HeldenText.borderShrinking(size, shown), true);
         return 1;
+    }
+
+    /** Sagt, wo die Arena liegt — und ob die Weltborder noch dazu passt. */
+    private static int centerShow(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+        double x = ArenaCenter.x(server);
+        double z = ArenaCenter.z(server);
+        double borderX = ArenaCenter.borderCenterX(server);
+        double borderZ = ArenaCenter.borderCenterZ(server);
+
+        source.sendSuccess(() -> HeldenText.centerShow(coords(x, z), coords(borderX, borderZ)), false);
+
+        // Ein Op darf die Weltborder von Hand woanders hinsetzen. Dann steht die Kuppel
+        // nicht mehr in ihrer Mitte, und das sieht man erst, wenn man davorsteht.
+        if (Math.abs(x - borderX) > 0.5 || Math.abs(z - borderZ) > 0.5) {
+            source.sendSuccess(HeldenText::centerMismatch, false);
+        }
+        return 1;
+    }
+
+    /** Verschiebt die Arena auf die eigene Position. Im Spiel der bequemere Weg. */
+    private static int centerHere(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        return centerMove(source, (int) Math.round(player.getX()), (int) Math.round(player.getZ()));
+    }
+
+    /**
+     * Schiebt Safezone, Trennwand und Weltborder gemeinsam.
+     *
+     * <p>Gemeinsam ist der Punkt: bliebe die Wand bei X = 0, waehrend die Border woanders
+     * liegt, haette eine Seite mehr Land als die andere.
+     */
+    private static int centerMove(CommandSourceStack source, int x, int z) {
+        ArenaCenter.move(source.getServer(), x, z);
+        source.sendSuccess(() -> HeldenText.centerMoved(coords(x, z)), true);
+        return 1;
+    }
+
+    /** Zurueck auf den in der Serverconfig eingestellten Fleck, nicht stur auf 0,0. */
+    private static int centerReset(CommandSourceStack source) {
+        return centerMove(source, (int) ArenaCenter.defaultX(), (int) ArenaCenter.defaultZ());
+    }
+
+    private static String coords(double x, double z) {
+        return String.format("%.0f, %.0f", x, z);
     }
 
     private static int borderReset(CommandSourceStack source) {

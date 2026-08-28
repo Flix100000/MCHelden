@@ -17,7 +17,8 @@ public record StateSyncPayload(
         BountyView bounty,
         int playtimeRemainingSeconds,
         String phaseId,
-        boolean wallUp) implements CustomPacketPayload {
+        boolean wallUp,
+        ArenaView arena) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<StateSyncPayload> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(MCHelden.MODID, "state_sync"));
@@ -28,6 +29,7 @@ public record StateSyncPayload(
             ByteBufCodecs.VAR_INT, StateSyncPayload::playtimeRemainingSeconds,
             ByteBufCodecs.STRING_UTF8, StateSyncPayload::phaseId,
             ByteBufCodecs.BOOL, StateSyncPayload::wallUp,
+            ArenaView.STREAM_CODEC, StateSyncPayload::arena,
             StateSyncPayload::new);
 
     @Override

@@ -19,6 +19,7 @@ import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
+import net.bananemdnsa.mchelden.world.ArenaCenter;
 import net.bananemdnsa.mchelden.world.BorderController;
 import net.bananemdnsa.mchelden.world.DividerWall;
 import net.bananemdnsa.mchelden.world.SafeZone;
@@ -49,6 +50,8 @@ public class MCHelden {
         MCHeldenBlocks.register(modEventBus);
         MCHeldenBlockEntities.register(modEventBus);
         MCHeldenMenus.register(modEventBus);
+        modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.SERVER,
+                MCHeldenConfig.SPEC);
 
         modEventBus.addListener(this::registerPayloads);
 
@@ -99,7 +102,15 @@ public class MCHelden {
      * <p>Steht hier und nicht beim Weltwechsel: die Border gehoert zur Welt, nicht zu einer
      * Phase, und eine frische Welt haette sonst die Vanilla-Grenze von sechzig Millionen.
      */
+    /**
+     * Richtet eine frische Welt ein.
+     *
+     * <p>Die Reihenfolge ist nicht beliebig: beide erkennen an demselben Schalter, ob die
+     * Welt neu ist, und {@link BorderController#initialise} legt ihn um. Die Mitte muss
+     * deswegen zuerst stehen — sonst zoege die Border an den alten Fleck.
+     */
     private void onServerStarted(ServerStartedEvent event) {
+        ArenaCenter.initialise(event.getServer());
         BorderController.initialise(event.getServer());
     }
 

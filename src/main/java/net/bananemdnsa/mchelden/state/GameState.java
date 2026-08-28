@@ -12,6 +12,8 @@ public class GameState extends SavedData {
     private static final String KEY_PHASE = "phase";
     private static final String KEY_WALL_UP = "wallUp";
     private static final String KEY_BORDER_SET = "borderSet";
+    private static final String KEY_CENTER_X = "centerX";
+    private static final String KEY_CENTER_Z = "centerZ";
 
     private static final Factory<GameState> FACTORY =
             new Factory<>(GameState::new, GameState::load);
@@ -40,6 +42,17 @@ public class GameState extends SavedData {
      * im Schrumpfen liefe sonst gegen die Wiederaufnahme, die Vanilla gratis mitbringt.
      */
     private boolean borderSet;
+
+    /**
+     * Mitte der Arena: Safezone, Trennwand und Weltborder haengen daran.
+     *
+     * <p>Gespeichert, weil sich der Wert aus nichts ableiten laesst — und weil ein Verlust
+     * teuer waere: nach einem Neustart stuenden Safezone und Wand wieder bei 0,0, waehrend
+     * die Weltborder ihre verschobene Mitte behaelt. Die Wand laege dann nicht mehr in der
+     * Mitte, und eine Seite haette mehr Land als die andere.
+     */
+    private double centerX;
+    private double centerZ;
 
 
     public static GameState get(MinecraftServer server) {
@@ -73,9 +86,26 @@ public class GameState extends SavedData {
         setDirty();
     }
 
+    public double getCenterX() {
+        return centerX;
+    }
+
+    public double getCenterZ() {
+        return centerZ;
+    }
+
+    public void setCenter(double centerX, double centerZ) {
+        this.centerX = centerX;
+        this.centerZ = centerZ;
+        setDirty();
+    }
+
     public void reset() {
         setPhase(Phase.AUFBAU);
         setWallUp(true);
+        // Die Arenamitte bleibt stehen — aus demselben Grund wie die Bordergroesse unten:
+        // wo die Arena liegt, ist Weltaufbau und nicht der Zustand einer Runde. Zurueck in
+        // die Weltmitte holt sie "/helden center reset".
         // Nicht der Schalter wird zurueckgesetzt, sondern die Border selbst — siehe
         // BorderController.reset. Ein zurueckgesetzter Schalter wuerde sie beim naechsten
         // Start ein zweites Mal setzen, ohne dass jemand darum gebeten haette.
@@ -86,6 +116,8 @@ public class GameState extends SavedData {
         tag.putString(KEY_PHASE, phase.getId());
         tag.putBoolean(KEY_WALL_UP, wallUp);
         tag.putBoolean(KEY_BORDER_SET, borderSet);
+        tag.putDouble(KEY_CENTER_X, centerX);
+        tag.putDouble(KEY_CENTER_Z, centerZ);
         return tag;
     }
 
@@ -97,6 +129,9 @@ public class GameState extends SavedData {
         // Ohne Eintrag: noch nicht gesetzt. Bestehende Welten bekommen ihre Border damit
         // beim naechsten Start, statt sie fuer immer von Hand zu brauchen.
         state.borderSet = tag.getBoolean(KEY_BORDER_SET);
+        // Ohne Eintrag die Weltmitte: eine Welt von vor dieser Aenderung liegt auf 0,0.
+        state.centerX = tag.getDouble(KEY_CENTER_X);
+        state.centerZ = tag.getDouble(KEY_CENTER_Z);
         return state;
     }
 }

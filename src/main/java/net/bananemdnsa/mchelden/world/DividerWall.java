@@ -257,7 +257,8 @@ public final class DividerWall {
         if (!isUp(player.level()) || player.isCreative() || player.isSpectator()) {
             return false;
         }
-        return Side.of(player.getX()) != Side.of(x);
+        double center = ArenaCenter.x(player.level());
+        return Side.of(player.getX() - center) != Side.of(x - center);
     }
 
     /** Dasselbe fuer einen Block: gerechnet wird mit seiner Mitte, nicht mit seiner Ecke. */
@@ -369,12 +370,13 @@ public final class DividerWall {
         // Projektile verschwinden an der Wand, statt daran abzuprallen: ein Pfeil, der
         // zurueckfliegt, sieht aus wie ein Fehler. Alles andere prallt ab — ein geworfenes
         // Item zu loeschen waere ein Verlust, den niemand versteht.
-        Side from = Side.of(entity.xo);
-        if (!from.contains(entity.getX())) {
+        double center = ArenaCenter.x(entity.level());
+        Side from = Side.of(entity.xo - center);
+        if (!from.contains(entity.getX() - center)) {
             if (entity instanceof Projectile) {
                 absorb(entity);
             } else {
-                push(entity, from);
+                push(entity, from, center);
             }
         }
     }
@@ -397,7 +399,8 @@ public final class DividerWall {
 
         PlayerState state = PlayerStateStore.get(server).find(player.getUUID());
         Side side = state != null ? state.getSide() : null;
-        if (side == null || side.contains(player.getX())) {
+        double center = ArenaCenter.x(server);
+        if (side == null || side.contains(player.getX() - center)) {
             return;
         }
 
@@ -406,13 +409,13 @@ public final class DividerWall {
             return;
         }
 
-        player.teleportTo(side.getSign() * MARGIN, player.getY(), player.getZ());
+        player.teleportTo(center + side.getSign() * MARGIN, player.getY(), player.getZ());
         player.setDeltaMovement(0, player.getDeltaMovement().y, player.getDeltaMovement().z);
         player.hurtMarked = true;
     }
 
-    private static void push(Entity entity, Side from) {
-        entity.setPos(from.getSign() * MARGIN, entity.getY(), entity.getZ());
+    private static void push(Entity entity, Side from, double center) {
+        entity.setPos(center + from.getSign() * MARGIN, entity.getY(), entity.getZ());
 
         Vec3 movement = entity.getDeltaMovement();
         entity.setDeltaMovement(-movement.x * 0.5, movement.y, movement.z);

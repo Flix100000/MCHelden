@@ -7,9 +7,14 @@ import net.minecraft.network.chat.Component;
 /**
  * Auf welcher Haelfte der Welt ein Spieler zuhause ist.
  *
- * <p>Die Trennwand steht bei X = 0. Westen ist alles Negative, Osten alles Positive — das
- * ist keine Geschmacksfrage, sondern folgt Minecrafts Achsen, und beim Debuggen ist es
- * dieselbe Richtung wie im F3-Bildschirm.
+ * <p>Westen ist alles Negative, Osten alles Positive — das ist keine Geschmacksfrage,
+ * sondern folgt Minecrafts Achsen, und beim Debuggen ist es dieselbe Richtung wie im
+ * F3-Bildschirm.
+ *
+ * <p><b>Die X-Koordinaten sind relativ zur Arenamitte.</b> Die Wand steht dort, wo die
+ * Mitte liegt, und nicht mehr zwangslaeufig bei X = 0. Diese Klasse rechnet trotzdem gegen
+ * die Null: das haelt sie zu einer reinen Vorzeichenfrage, und das Verschieben erledigt die
+ * Trennwand selbst, die ohnehin eine Welt zur Hand hat.
  */
 public enum Side {
     WEST("west", -1),

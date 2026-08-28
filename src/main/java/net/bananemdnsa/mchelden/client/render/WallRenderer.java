@@ -10,6 +10,7 @@ import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 
 import net.bananemdnsa.mchelden.client.ClientState;
+import net.bananemdnsa.mchelden.world.ArenaCenter;
 import net.bananemdnsa.mchelden.world.DividerWall;
 
 import net.minecraft.Util;
@@ -73,7 +74,10 @@ public final class WallRenderer {
             return;
         }
 
-        Vec3 eye = minecraft.gameRenderer.getMainCamera().getPosition();
+        // Nur X um die Mitte verschoben: die Wand steht dort. Z bleibt absolut, denn die
+        // Ausdehnung laengs der Wand haengt an den Borderkanten, die ohnehin mitwandern.
+        Vec3 eye = minecraft.gameRenderer.getMainCamera().getPosition()
+                .subtract(ArenaCenter.x(minecraft.level), 0.0, 0.0);
         double range = minecraft.options.getEffectiveRenderDistance() * 16.0;
         double closeness = 1.0 - Math.abs(eye.x) / range;
         double alpha = closeness <= 0.0 ? 0.0 : Mth.clamp(Math.pow(closeness, 4.0), 0.0, 1.0);
@@ -99,7 +103,7 @@ public final class WallRenderer {
         }
 
         Camera camera = event.getCamera();
-        Vec3 eye = camera.getPosition();
+        Vec3 eye = camera.getPosition().subtract(ArenaCenter.x(minecraft.level), 0.0, 0.0);
         double range = minecraft.options.getEffectiveRenderDistance() * 16.0;
 
         // Genau wie bei der Weltgrenze: erst kurz davor wird sie sichtbar, und dann schnell.

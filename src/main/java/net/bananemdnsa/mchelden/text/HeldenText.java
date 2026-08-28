@@ -342,6 +342,28 @@ public final class HeldenText {
                 .withStyle(ChatFormatting.GRAY);
     }
 
+    /** Wo die Arena liegt, plus die Weltborder zum Abgleich. */
+    public static Component centerShow(String center, String border) {
+        return Component.translatable("mchelden.command.center.show", center, border)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component centerMoved(String center) {
+        return Component.translatable("mchelden.command.center.moved", center)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /**
+     * Warnt, wenn die Weltborder woanders steht als die Arena.
+     *
+     * <p>Ein Op darf {@code /worldborder center} jederzeit von Hand setzen. Dann stuenden
+     * Kuppel und Wand woanders als die Weltgrenze, ohne dass es jemandem auffiele.
+     */
+    public static Component centerMismatch() {
+        return Component.translatable("mchelden.command.center.mismatch")
+                .withStyle(ChatFormatting.YELLOW);
+    }
+
     public static Component borderReset(int blocks) {
         return Component.translatable("mchelden.command.border.reset", blocks)
                 .withStyle(ChatFormatting.GRAY);

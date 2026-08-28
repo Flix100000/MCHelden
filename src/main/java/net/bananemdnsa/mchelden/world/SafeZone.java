@@ -127,6 +127,11 @@ public final class SafeZone {
      *
      * <p>Nur der waagerechte Abstand zaehlt. Die Zone reicht von der Weltuntergrenze bis
      * ueber die Bauhoehe — man kann darin bauen, tuermen und graben, ohne herauszufallen.
+     *
+     * <p><b>Die Koordinaten sind relativ zur Arenamitte.</b> Diese Methode kennt den
+     * {@link ArenaCenter} nicht und soll ihn nicht kennen: sie bleibt damit eine reine
+     * Rechnung, die sich ohne Spielstart pruefen laesst. Das Verschieben erledigen die
+     * Aufrufer, die ohnehin eine Welt zur Hand haben.
      */
     public static boolean contains(double x, double z) {
         return x * x + z * z <= RADIUS * RADIUS;
@@ -158,7 +163,9 @@ public final class SafeZone {
 
     /** Steht diese Entitaet in der Safezone? */
     public static boolean covers(Entity entity) {
-        return isActive(entity.level()) && contains(entity.getX(), entity.getZ());
+        return isActive(entity.level())
+                && contains(entity.getX() - ArenaCenter.x(entity.level()),
+                        entity.getZ() - ArenaCenter.z(entity.level()));
     }
 
     /**
@@ -179,7 +186,8 @@ public final class SafeZone {
             return null;
         }
 
-        double[] allowed = slide(entity.getX(), entity.getZ(), movement.x, movement.z);
+        double[] allowed = slide(entity.getX() - ArenaCenter.x(entity.level()),
+                entity.getZ() - ArenaCenter.z(entity.level()), movement.x, movement.z);
         return allowed == null ? null : new Vec3(allowed[0], movement.y, allowed[1]);
     }
 
@@ -296,7 +304,10 @@ public final class SafeZone {
             return;
         }
 
-        event.getAffectedBlocks().removeIf(pos -> contains(pos.getX() + 0.5, pos.getZ() + 0.5));
+        double centerX = ArenaCenter.x(event.getLevel());
+        double centerZ = ArenaCenter.z(event.getLevel());
+        event.getAffectedBlocks().removeIf(pos ->
+                contains(pos.getX() + 0.5 - centerX, pos.getZ() + 0.5 - centerZ));
         event.getAffectedEntities().removeIf(SafeZone::covers);
     }
 
@@ -316,7 +327,9 @@ public final class SafeZone {
             return;
         }
 
-        if (isActive(event.getLevel().getLevel()) && contains(event.getX(), event.getZ())) {
+        Level level = event.getLevel().getLevel();
+        if (isActive(level) && contains(event.getX() - ArenaCenter.x(level),
+                event.getZ() - ArenaCenter.z(level))) {
             event.setSpawnCancelled(true);
         }
     }
@@ -327,7 +340,8 @@ public final class SafeZone {
             return;
         }
 
-        if (isActive(level) && contains(event.getPos().getX() + 0.5, event.getPos().getZ() + 0.5)) {
+        if (isActive(level) && contains(event.getPos().getX() + 0.5 - ArenaCenter.x(level),
+                event.getPos().getZ() + 0.5 - ArenaCenter.z(level))) {
             event.setCanceled(true);
         }
     }
@@ -372,7 +386,9 @@ public final class SafeZone {
             return;
         }
 
-        double distance = Math.sqrt(player.getX() * player.getX() + player.getZ() * player.getZ());
+        double toCenterX = player.getX() - ArenaCenter.x(player.level());
+        double toCenterZ = player.getZ() - ArenaCenter.z(player.level());
+        double distance = Math.sqrt(toCenterX * toCenterX + toCenterZ * toCenterZ);
 
         if (distance < RADIUS + DENIAL_RANGE) {
             player.displayClientMessage(HeldenText.safeZoneDenied(), true);
@@ -462,8 +478,8 @@ public final class SafeZone {
 
             for (int i = 0; i < BURST_POINTS; i++) {
                 double angle = 2.0 * Math.PI * i / BURST_POINTS;
-                double x = Math.cos(angle) * RADIUS;
-                double z = Math.sin(angle) * RADIUS;
+                double x = ArenaCenter.x(level) + Math.cos(angle) * RADIUS;
+                double z = ArenaCenter.z(level) + Math.sin(angle) * RADIUS;
 
                 level.sendParticles(player, ParticleTypes.END_ROD, true,
                         x, y, z, count, 0.4, BURST_SPREAD_Y, 0.4, 0.05);
@@ -513,8 +529,8 @@ public final class SafeZone {
     }
 
     private static boolean nearZone(ServerPlayer player) {
-        double x = player.getX();
-        double z = player.getZ();
+        double x = player.getX() - ArenaCenter.x(player.level());
+        double z = player.getZ() - ArenaCenter.z(player.level());
         double limit = RADIUS + BURST_RANGE;
         return x * x + z * z <= limit * limit;
     }

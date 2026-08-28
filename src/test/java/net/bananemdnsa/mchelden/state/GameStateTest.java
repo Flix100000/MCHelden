@@ -122,4 +122,55 @@ class GameStateTest {
             assertEquals(phase, Phase.byId(phase.getId()));
         }
     }
+
+    /**
+     * Die Arenamitte muss den Neustart ueberstehen.
+     *
+     * <p>Sonst stuenden nach jedem Serverstart Safezone und Trennwand wieder bei 0,0,
+     * waehrend die Weltborder dort bleibt, wo sie hingeschoben wurde — die Wand laege
+     * ploetzlich nicht mehr in der Mitte, und eine Seite haette mehr Land als die andere.
+     */
+    @Test
+    void dieArenamitteUeberlebtDieSpeicherrunde() {
+        GameState state = new GameState();
+        state.setCenter(1500.0, -800.0);
+
+        CompoundTag tag = state.save(new CompoundTag(), null);
+        GameState geladen = GameState.load(tag, null);
+
+        assertEquals(1500.0, geladen.getCenterX(), 1.0e-9);
+        assertEquals(-800.0, geladen.getCenterZ(), 1.0e-9);
+    }
+
+    @Test
+    void frischeWeltLiegtAufNullNull() {
+        GameState state = new GameState();
+        assertEquals(0.0, state.getCenterX(), 1.0e-9);
+        assertEquals(0.0, state.getCenterZ(), 1.0e-9);
+    }
+
+    /** Eine Welt von vor dieser Aenderung hat keinen Eintrag und muss auf 0,0 landen. */
+    @Test
+    void alteWeltOhneEintragLiegtAufNullNull() {
+        GameState geladen = GameState.load(new CompoundTag(), null);
+        assertEquals(0.0, geladen.getCenterX(), 1.0e-9);
+        assertEquals(0.0, geladen.getCenterZ(), 1.0e-9);
+    }
+
+    /**
+     * Ein Reset laesst die Arenamitte stehen.
+     *
+     * <p>Dieselbe Ueberlegung wie bei der Bordergroesse, die {@code reset} ebenfalls nicht
+     * anfasst: wo die Arena liegt, ist Weltaufbau und nicht der Zustand einer Runde. Wer
+     * eine neue Runde startet, will nicht, dass ihm die Arena unter den Fuessen wegspringt.
+     */
+    @Test
+    void resetLaesstDieMitteStehen() {
+        GameState state = new GameState();
+        state.setCenter(1500.0, -800.0);
+        state.reset();
+
+        assertEquals(1500.0, state.getCenterX(), 1.0e-9);
+        assertEquals(-800.0, state.getCenterZ(), 1.0e-9);
+    }
 }

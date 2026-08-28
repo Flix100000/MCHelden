@@ -11,6 +11,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 
 import net.bananemdnsa.mchelden.client.ClientState;
 import net.bananemdnsa.mchelden.phase.PhaseManager;
+import net.bananemdnsa.mchelden.world.ArenaCenter;
 import net.bananemdnsa.mchelden.world.SafeZone;
 
 import net.minecraft.Util;
@@ -76,7 +77,10 @@ public final class SafeZoneRenderer {
             return;
         }
 
-        Vec3 eye = minecraft.gameRenderer.getMainCamera().getPosition();
+        // Um die Arenamitte verschoben: alles Weitere rechnet gegen den Ursprung, und
+        // damit stimmt es fuer jede Mitte, ohne dass eine der Formeln sie kennen muss.
+        Vec3 eye = minecraft.gameRenderer.getMainCamera().getPosition()
+                .subtract(ArenaCenter.x(minecraft.level), 0.0, ArenaCenter.z(minecraft.level));
         double toAxis = Math.sqrt(eye.x * eye.x + eye.z * eye.z);
         double toWall = Math.abs(toAxis - SafeZone.RADIUS);
 
@@ -119,7 +123,8 @@ public final class SafeZoneRenderer {
         }
 
         Camera camera = event.getCamera();
-        Vec3 eye = camera.getPosition();
+        Vec3 eye = camera.getPosition()
+                .subtract(ArenaCenter.x(minecraft.level), 0.0, ArenaCenter.z(minecraft.level));
 
         // Abstand zur Wand, nicht zur Mitte: von innen wie von aussen gleich.
         double toAxis = Math.sqrt(eye.x * eye.x + eye.z * eye.z);

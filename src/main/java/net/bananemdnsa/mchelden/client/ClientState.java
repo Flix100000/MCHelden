@@ -138,6 +138,10 @@ public final class ClientState {
         playtimeTicks = 0;
         phase = Phase.byId(payload.phaseId());
         wallUp = payload.wallUp();
+        // Safezone- und Wandrenderer rechnen gegen die Arenamitte, und die kennt der Client
+        // nur von hier.
+        net.bananemdnsa.mchelden.world.ArenaCenter.setClient(
+                payload.arena().centerX(), payload.arena().centerZ());
         // Die Kollision laeuft auch auf dem Client — die muss den Stand ebenfalls kennen.
         net.bananemdnsa.mchelden.world.DividerWall.setClientWallUp(wallUp);
 
@@ -515,6 +519,7 @@ public final class ClientState {
         playtimeTicks = 0;
         phase = Phase.AUFBAU;
         wallUp = true;
+        net.bananemdnsa.mchelden.world.ArenaCenter.setClient(0.0, 0.0);
         wallDropTicks = -1;
         safeZoneArmTicks = -1;
         safeZoneShatterTicks = -1;

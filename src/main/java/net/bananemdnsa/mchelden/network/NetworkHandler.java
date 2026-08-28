@@ -89,7 +89,9 @@ public final class NetworkHandler {
                 bountyView(server, store, state),
                 PlaytimeTracker.displayRemaining(server, player, state),
                 GameState.get(server).getPhase().getId(),
-                GameState.get(server).isWallUp()));
+                GameState.get(server).isWallUp(),
+                new ArenaView(GameState.get(server).getCenterX(),
+                        GameState.get(server).getCenterZ())));
     }
 
     public static void syncAll(MinecraftServer server) {
