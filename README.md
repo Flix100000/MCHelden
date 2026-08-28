@@ -170,8 +170,8 @@ the pairing are cleared.
 
 | Phase | ID | What changes |
 |---|---|---|
-| Aufbau (build-up) | `aufbau` | Wall up, safe zone active, one-hour daily playtime limit |
-| Krieg (war) | `krieg` | Wall falls, no time limit |
+| Buildup | `aufbau` | Wall up, safe zone active, one-hour daily playtime limit |
+| War | `krieg` | Wall falls, no time limit |
 | Final War | `finalwar` | Safe zone shatters, world border starts shrinking, boss bar appears |
 
 Forward transitions get a countdown and a staged announcement — it is the biggest moment of
@@ -181,10 +181,10 @@ event.
 | Countdown | Seconds |
 |---|---|
 | Ordinary transition | 5 |
-| To Krieg (wall drop) | 12 |
+| To War (wall drop) | 12 |
 | To Final War | 10 |
 
-The wall breaks open *during* the Krieg countdown, not at the end of it — the announcement,
+The wall breaks open *during* the War countdown, not at the end of it — the announcement,
 the particle wave and the wall's disappearance are one event. The Final War countdown works
 the same way: the storm rolls in and the dome glows itself up to breaking point while the
 countdown runs.
@@ -343,7 +343,7 @@ be no state that only goes forward.
 | Command | Effect |
 |---|---|
 | `/helden finalwar start [duration]` | Starts the Final War through the phase system, so countdown, storm, dome and border stay one event. Default duration 2h30m |
-| `/helden finalwar stop` | Rolls back to Krieg — including mid-countdown |
+| `/helden finalwar stop` | Rolls back to War — including mid-countdown |
 | `/helden border shrink <size> <duration>` | The bare tool: shrinks the border with no phase and no boss bar. `size` 16–2000 |
 | `/helden border reset` | Back to 2000 |
 
@@ -380,7 +380,7 @@ The confirmation window is counted in server ticks rather than wall time, so a c
 from before a restart does not carry over, and it is tracked per caller so two operators
 cannot take each other's confirmation away.
 
-`reset all` clears graves, all player state, returns the phase to Aufbau through the phase
+`reset all` clears graves, all player state, returns the phase to Buildup through the phase
 system (so the wall goes back up, the boss bar goes away, the storm stops and the safe zone
 returns), and resets the border.
 
