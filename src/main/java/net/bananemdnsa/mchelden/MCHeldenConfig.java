@@ -22,18 +22,20 @@ public final class MCHeldenConfig {
     public static final ModConfigSpec SPEC;
 
     static {
+        // Englisch, anders als die Kommentare im Code: diese Zeilen landen in der
+        // TOML-Datei und werden von Serverbetreibern gelesen, nicht von uns.
         BUILDER.comment(
-                        "Wo die Arena liegt: Safezone, Trennwand und Weltborder haengen daran.",
-                        "Gilt beim allerersten Start einer Welt und fuer '/helden center reset'.",
-                        "Im laufenden Spiel verschiebt '/helden center <x> <z>' die Arena;",
-                        "der Wert wird dann in der Welt gespeichert und nicht hier.")
+                        "Where the arena sits: safe zone, dividing wall and world border all hang off it.",
+                        "Applies on a world's very first start, and to '/helden center reset'.",
+                        "While the game runs, '/helden center <x> <z>' moves the arena, and that",
+                        "value is stored with the world rather than here.")
                 .push("arena");
 
         CENTER_X = BUILDER
-                .comment("X-Koordinate der Arenamitte.")
+                .comment("X coordinate of the arena centre.")
                 .defineInRange("center_x", 0, -WORLD_LIMIT, WORLD_LIMIT);
         CENTER_Z = BUILDER
-                .comment("Z-Koordinate der Arenamitte.")
+                .comment("Z coordinate of the arena centre.")
                 .defineInRange("center_z", 0, -WORLD_LIMIT, WORLD_LIMIT);
 
         BUILDER.pop();
