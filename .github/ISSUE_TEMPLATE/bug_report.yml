@@ -1,0 +1,117 @@
+name: Bug Report
+description: Something in MCHelden behaves differently than it should
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Fill in what you know — **only the first box is required**,
+        everything else is optional. A short report is better than no report.
+
+        A quick look at [existing issues](https://github.com/Flix100000/MCHelden/issues) helps
+        avoid duplicates, but don't worry if you miss one.
+
+        If players could abuse this on a live server — walking through the dividing wall,
+        attacking inside the safe zone, dodging the combat timer — please write to the
+        maintainer directly instead of posting it here.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+      placeholder: |
+        The boss bar kept counting after the border had already stopped.
+        I expected it to say the arena stands.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we trigger it?
+      description: Rough steps are fine. If it only happened once, say so — that is useful too.
+      placeholder: |
+        1. /helden phase set war
+        2. /helden finalwar start 5m
+        3. Wait for the border to reach 160
+    validations:
+      required: false
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Which phase?
+      description: A lot of behaviour depends on this.
+      options:
+        - Buildup
+        - War
+        - Final War
+        - Happens in every phase
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostic output
+      description: |
+        MCHelden can usually tell you what it thinks is going on. Paste whatever fits:
+
+        - `/helden info <player>` — hearts, bounty, playtime, combat timer, status
+        - `/helden debug respawn` — where you will wake up next
+        - `/helden debug border` — border size, direction, corners, distance to the edge
+        - `/helden debug render` — dividing wall and safe zone as the client sees them
+        - `/helden debug combat`, `debug quota`, `debug playtime`, `debug bounty`
+
+        This is often faster than any description — it turns a guess into a number.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log or crash report
+      description: |
+        The interesting part of `latest.log`, or the crash report. For long logs please use
+        a paste service such as [mclo.gs](https://mclo.gs) and drop the link in.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: |
+        MCHelden and NeoForge. Minecraft is always 1.21.1 — the mod refuses to load on
+        anything else, so no need to write it down.
+      placeholder: "MCHelden 1.0.0, NeoForge 21.1.248"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where did it happen?
+      options:
+        - Dedicated server
+        - Singleplayer
+        - Both
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: modlist
+    attributes:
+      label: Other mods
+      description: Only if you think one of them is involved.
+      placeholder: |
+        - History Stages 3.0.0
+        - Simple Voice Chat 2.5.26
+    validations:
+      required: false
