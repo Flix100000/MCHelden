@@ -1,0 +1,7 @@
+{
+  "type": "mchelden:spawn_pack_size",
+  "biomes": "minecraft:desert",
+  "entity_types": "minecraft:enderman",
+  "min_count": 4,
+  "max_count": 4
+}

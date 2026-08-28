@@ -1,0 +1,14 @@
+{
+  "type": "neoforge:remove_spawns",
+  "biomes": "minecraft:desert",
+  "entity_types": [
+    "minecraft:spider",
+    "minecraft:zombie",
+    "minecraft:zombie_villager",
+    "minecraft:skeleton",
+    "minecraft:creeper",
+    "minecraft:slime",
+    "minecraft:witch",
+    "minecraft:husk"
+  ]
+}

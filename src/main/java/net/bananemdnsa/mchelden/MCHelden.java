@@ -8,6 +8,7 @@ import net.bananemdnsa.mchelden.combat.CombatLogout;
 import net.bananemdnsa.mchelden.combat.ContainerLock;
 import net.bananemdnsa.mchelden.combat.QuotaEvents;
 import net.bananemdnsa.mchelden.grave.GraveEvents;
+import net.bananemdnsa.mchelden.registry.MCHeldenBiomeModifiers;
 import net.bananemdnsa.mchelden.registry.MCHeldenBlockEntities;
 import net.bananemdnsa.mchelden.registry.MCHeldenBlocks;
 import net.bananemdnsa.mchelden.registry.MCHeldenMenus;
@@ -50,6 +51,7 @@ public class MCHelden {
         MCHeldenBlocks.register(modEventBus);
         MCHeldenBlockEntities.register(modEventBus);
         MCHeldenMenus.register(modEventBus);
+        MCHeldenBiomeModifiers.register(modEventBus);
         modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.SERVER,
                 MCHeldenConfig.SPEC);
 
