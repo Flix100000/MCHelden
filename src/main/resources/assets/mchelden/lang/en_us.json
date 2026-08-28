@@ -112,5 +112,6 @@
   "mchelden.command.reset.all.list": "Hearts, bounties, eliminations, playtimes, graves, phase, wall and border.",
   "mchelden.command.reset.all.confirm": "Run it again within %s seconds to really do it.",
   "mchelden.command.reset.all.done": "Everything reset. Back to the delivery state.",
-  "mchelden.command.reset.everyone": "everyone"
+  "mchelden.command.reset.everyone": "everyone",
+  "mchelden.command.phase.unknown": "Unknown phase. Valid ones are: %s"
 }

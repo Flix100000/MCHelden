@@ -91,7 +91,7 @@ public class GameState extends SavedData {
 
     static GameState load(CompoundTag tag, HolderLookup.Provider registries) {
         GameState state = new GameState();
-        state.phase = Phase.byId(tag.getString(KEY_PHASE));
+        state.phase = Phase.bySavedId(tag.getString(KEY_PHASE));
         // Ohne gespeicherten Eintrag steht die Wand: eine frische Welt beginnt im Aufbau.
         state.wallUp = !tag.contains(KEY_WALL_UP) || tag.getBoolean(KEY_WALL_UP);
         // Ohne Eintrag: noch nicht gesetzt. Bestehende Welten bekommen ihre Border damit

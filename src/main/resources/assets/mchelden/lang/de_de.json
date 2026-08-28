@@ -112,5 +112,6 @@
   "mchelden.command.reset.all.list": "Herzen, Bounties, Eliminationen, Spielzeiten, Gräber, Phase, Wand und Border.",
   "mchelden.command.reset.all.confirm": "Noch einmal ausführen innerhalb von %s Sekunden, um es wirklich zu tun.",
   "mchelden.command.reset.all.done": "Alles zurückgesetzt. Der Auslieferungszustand steht.",
-  "mchelden.command.reset.everyone": "alle"
+  "mchelden.command.reset.everyone": "alle",
+  "mchelden.command.phase.unknown": "Unbekannte Phase. Moeglich sind: %s"
 }

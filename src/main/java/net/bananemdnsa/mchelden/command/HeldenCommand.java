@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
@@ -561,7 +562,17 @@ public final class HeldenCommand {
     }
 
     private static int phaseSet(CommandSourceStack source, String phaseId) {
-        return startPhase(source, Phase.byId(phaseId));
+        Phase phase = Phase.byId(phaseId);
+        if (phase == null) {
+            source.sendFailure(HeldenText.phaseUnknown(phaseIds()));
+            return 0;
+        }
+        return startPhase(source, phase);
+    }
+
+    /** Die gueltigen Kennungen, fuer die Fehlermeldung. */
+    private static String phaseIds() {
+        return Arrays.stream(Phase.values()).map(Phase::getId).collect(Collectors.joining(", "));
     }
 
     private static int phaseNext(CommandSourceStack source) {

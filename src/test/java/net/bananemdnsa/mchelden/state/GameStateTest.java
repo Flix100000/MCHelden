@@ -68,9 +68,21 @@ class GameStateTest {
         assertFalse(GameState.load(new CompoundTag(), null).isBorderSet());
     }
 
+    /** Eine Speicherdatei darf nicht ins Leere laufen. */
     @Test
-    void unbekannteIdFaelltAufAufbauZurueck() {
-        assertEquals(Phase.AUFBAU, Phase.byId("gibtsnicht"));
+    void unbekannteGespeicherteIdFaelltAufAufbauZurueck() {
+        assertEquals(Phase.AUFBAU, Phase.bySavedId("gibtsnicht"));
+    }
+
+    /**
+     * Eine Tastatureingabe dagegen schon. Frueher setzte ein vertipptes `phase set kreig`
+     * stillschweigend den Aufbau — mitten in der Staffel haette das die Wand hochgezogen
+     * und die Border zurueckgesetzt.
+     */
+    @Test
+    void unbekannteEingabeWirdAbgelehnt() {
+        assertNull(Phase.byId("gibtsnicht"));
+        assertNull(Phase.byId("kreig"));
     }
 
     @Test
@@ -86,8 +98,15 @@ class GameStateTest {
      */
     @Test
     void alteDeutscheIdsWerdenNochGelesen() {
-        assertEquals(Phase.AUFBAU, Phase.byId("aufbau"));
-        assertEquals(Phase.KRIEG, Phase.byId("krieg"));
+        assertEquals(Phase.AUFBAU, Phase.bySavedId("aufbau"));
+        assertEquals(Phase.KRIEG, Phase.bySavedId("krieg"));
+    }
+
+    /** Aber nur aus der Datei — eintippen laesst sich die alte Kennung nicht mehr. */
+    @Test
+    void alteDeutscheIdsSindKeineEingabeMehr() {
+        assertNull(Phase.byId("aufbau"));
+        assertNull(Phase.byId("krieg"));
     }
 
     @Test

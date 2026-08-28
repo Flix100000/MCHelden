@@ -419,4 +419,10 @@ public final class HeldenText {
     public static Component resetEveryone() {
         return Component.translatable("mchelden.command.reset.everyone");
     }
+
+    /** Nennt die gueltigen Kennungen, statt nur "geht nicht" zu sagen. */
+    public static Component phaseUnknown(String valid) {
+        return Component.translatable("mchelden.command.phase.unknown", valid)
+                .withStyle(ChatFormatting.RED);
+    }
 }
