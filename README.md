@@ -5,7 +5,7 @@ around a single scarce resource: hearts.
 
 **Minecraft 1.21.1 · NeoForge 21.1.248 · Java 21**
 
-The mod builds game systems, plus two deliberate loot and spawn rules. It does not touch world
+The mod builds game systems, plus four deliberate loot and spawn rules. It does not touch world
 generation and does not block items. What data it does ship *modifies* vanilla tables rather
 than replacing them, so it sits alongside History Stages' data pack instead of fighting it.
 
@@ -317,14 +317,35 @@ it has to be set before the world exists.
 
 ### Loot and spawns
 
-Two deliberate exceptions to "game systems only". Both are data files that modify vanilla
-tables instead of replacing them, so other mods and data packs keep working.
+Four deliberate exceptions to "game systems only". Three of them are data files that modify
+vanilla tables instead of replacing them, so other mods and data packs keep working; the
+fourth changes a drop chance rather than the loot itself, and is explained below.
 
 **Ancient city trims in shipwrecks.** The two trims that only exist in the ancient city —
 `silence` and `ward` — also turn up in all three shipwreck chests, at exactly the chances they
 have at home: 1/80 for silence, 4/80 for ward. The numbers are not copied by hand; a test
 compares them against Mojang's own `ancient_city.json`, so a vanilla change to those weights
 shows up as a failing test. The shipwreck's own `coast` trim is untouched.
+
+**Mending can be fished up.** In vanilla it can, in theory: through a treasure catch, one
+book among six entries, randomly enchanted. Multiply those three out and you are into tens of
+hours of fishing per book, which over an event that runs for weeks means never. In open water,
+every cast now has
+a flat **0.25 % chance** of also yielding a mending book — roughly one per four hundred casts,
+or about an hour with Lure III. It deliberately does not hang off the treasure catch: loot
+modifiers only apply to the outermost table, so the rule sits on `gameplay/fishing` itself and
+carries the treasure entry's open-water condition, copied from Mojang's table by a test rather
+than by hand. Luck of the Sea does not help — the price of a rule that fits in one sentence.
+
+**Drowned drop their trident three times as often.** Vanilla puts a trident in 6.25 % of
+drowned hands and drops it 8.5 % of the time, so roughly one in two hundred drowned yields
+one. A drowned that spawns holding a trident now has a **27 % drop chance**, which works out
+to 1.7 % overall. This is the one rule that is not a data file: a loot table would be a
+*second, independent* roll, so a drowned visibly holding one trident would occasionally drop
+two, and the trident would come out factory-fresh instead of worn the way vanilla equipment
+drops are. Raising the drop chance keeps it the same drop, just more often — wear and looting
+bonus included. Drowned that pick a trident up off the ground are left alone; vanilla already
+makes those drop it every time.
 
 **Deserts spawn nothing but endermen.** Every hostile mob is removed from the desert biome,
 and the enderman is given the End's pack size of exactly four, so they arrive as often as they
