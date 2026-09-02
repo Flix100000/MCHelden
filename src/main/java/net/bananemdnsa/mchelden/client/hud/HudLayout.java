@@ -47,7 +47,7 @@ public final class HudLayout {
         return graphics.guiWidth() - EDGE_OFFSET;
     }
 
-    /** Oben mittig: der Combat-Timer. */
+    /** Oben mittig: der Combat-Timer, und an derselben Stelle der Duell-Timer. */
     public static int combatTop(GuiGraphics graphics) {
         return TOP_OFFSET;
     }

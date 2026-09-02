@@ -34,7 +34,7 @@ public final class ContainerLock {
     /** Kisten, Enderkisten, Shulker, Öfen, Werkbänke, Ambosse, Braustände. */
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         if (!(event.getEntity() instanceof ServerPlayer player)
-                || !CombatTracker.isInCombat(player.getUUID())) {
+                || !FightState.isFighting(player.getUUID())) {
             return;
         }
 
@@ -51,7 +51,7 @@ public final class ContainerLock {
     /** Esel und Lamas mit Kiste, Kistenboote, Kistenloren — mobiler Lagerraum. */
     public static void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
         if (!(event.getEntity() instanceof ServerPlayer player)
-                || !CombatTracker.isInCombat(player.getUUID())) {
+                || !FightState.isFighting(player.getUUID())) {
             return;
         }
 

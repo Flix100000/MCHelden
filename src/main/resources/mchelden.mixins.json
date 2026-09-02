@@ -6,7 +6,10 @@
     "CombatTrackerMixin",
     "EntityCollideMixin"
   ],
-  "client": [],
+  "client": [
+    "DuelGlowMixin",
+    "DuelGlowColorMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   },

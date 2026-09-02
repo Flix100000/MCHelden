@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.Nullable;
 
-import net.bananemdnsa.mchelden.combat.CombatTracker;
+import net.bananemdnsa.mchelden.combat.FightState;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.text.HeldenText;
@@ -260,10 +260,11 @@ public final class SafeZone {
         return entity.getType().getCategory() == MobCategory.MONSTER;
     }
 
+    /** Kampf oder Duell — die Kuppel unterscheidet nicht. */
     private static boolean inCombat(Player player) {
         return player.level().isClientSide()
                 ? clientInCombat
-                : CombatTracker.isInCombat(player.getUUID());
+                : FightState.isFighting(player.getUUID());
     }
 
     /**
@@ -382,7 +383,7 @@ public final class SafeZone {
      */
     private static void denyEntry(ServerPlayer player, boolean inside) {
         if (inside || player.tickCount % DENIAL_GAP != 0
-                || !CombatTracker.isInCombat(player.getUUID())) {
+                || !FightState.isFighting(player.getUUID())) {
             return;
         }
 

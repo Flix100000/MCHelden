@@ -97,11 +97,17 @@ public final class ClientState {
     private static String eliminationKiller = "";
 
     /** Combat-Timer. Der Server schickt nur Aenderungen, heruntergezaehlt wird hier. */
-    private static int combatTicks;
-    /** Laeuft kurz nach jedem Treffer, damit der Balken sichtbar aufleuchtet. */
-    private static int combatFlashTicks;
-    private static int combatEnterTicks;
-    private static int combatExitTicks;
+    private static final TimerState COMBAT = new TimerState();
+    /**
+     * Duell-Timer. Laeuft nie gleichzeitig mit dem Combat-Timer: im Duell gibt es zwischen
+     * den beiden keinen Kampf-Timer, und der Moment, in dem beides zusammentraefe, ist
+     * genau der, in dem das Duell platzt.
+     */
+    private static final TimerState DUEL = new TimerState();
+
+    /** Der Duellgegner. Der Glow haengt allein an ihm. */
+    @Nullable
+    private static UUID duelOpponentId;
 
     private static int pearlsLeft;
     private static int cobwebsLeft;
@@ -111,15 +117,6 @@ public final class ClientState {
     private static float pendingVolume;
     private static float pendingPitch;
     private static int pendingDelay;
-
-    /** Dauer des Aufleuchtens nach einem Treffer. */
-    public static final int COMBAT_FLASH_TICKS = 7;
-    /** Wie lange der Balken beim Kampfbeginn einschwebt. */
-    public static final int COMBAT_ENTER_TICKS = 6;
-    /** Wie lange er nach Kampfende noch nachleuchtet und zusammenfaehrt. */
-    public static final int COMBAT_EXIT_TICKS = 12;
-    /** Ab wann der Countdown tickt und der Balken pulsiert. */
-    public static final int COMBAT_WARNING_TICKS = 3 * 20;
 
     private ClientState() {
     }
@@ -279,59 +276,53 @@ public final class ClientState {
      */
     public static void onCombat(net.bananemdnsa.mchelden.network.CombatSyncPayload payload) {
         pearlsLeft = payload.pearlsLeft();
-        net.bananemdnsa.mchelden.world.SafeZone.setClientInCombat(payload.remainingTicks() > 0);
         cobwebsLeft = payload.cobwebsLeft();
-
-        int remainingTicks = payload.remainingTicks();
-        if (remainingTicks > combatTicks) {
-            if (combatTicks == 0) {
-                beginCombat();
-            }
-            combatFlashTicks = COMBAT_FLASH_TICKS;
-        } else if (remainingTicks == 0 && combatTicks > 0) {
-            // Erzwungenes Raeumen, etwa per Command oder beim Tod.
-            endCombat();
-        }
-        combatTicks = remainingTicks;
+        COMBAT.accept(payload.remainingTicks());
+        updateSafeZoneLock();
     }
 
-    /** Tiefer Schlag, kurz darauf ein zweiter Ton — der Eintritt bekommt einen Moment. */
-    private static void beginCombat() {
-        combatEnterTicks = COMBAT_ENTER_TICKS;
-        combatExitTicks = 0;
-        play(SoundEvents.NOTE_BLOCK_BASEDRUM.value(), 0.9f, 0.6f);
-        playDelayed(SoundEvents.NOTE_BLOCK_BIT.value(), 0.5f, 0.8f, 3);
+    /**
+     * Uebernimmt den Duell-Stand und den Gegner.
+     *
+     * <p>Der Gegner steht mit im Paket, weil der Glow an ihm haengt: der Client laesst genau
+     * diesen einen Spieler fuer sich leuchten.
+     */
+    public static void onDuel(net.bananemdnsa.mchelden.network.DuelSyncPayload payload) {
+        duelOpponentId = payload.opponent().orElse(null);
+        DUEL.accept(payload.remainingTicks());
+        updateSafeZoneLock();
     }
 
-    /** Zwei aufsteigende Toene: die Anspannung loest sich, man darf wieder an die Kisten. */
-    private static void endCombat() {
-        combatExitTicks = COMBAT_EXIT_TICKS;
-        play(SoundEvents.NOTE_BLOCK_CHIME.value(), 0.7f, 1.3f);
-        playDelayed(SoundEvents.NOTE_BLOCK_PLING.value(), 0.6f, 1.9f, 4);
+    /**
+     * Haelt die Safezone-Sperre auf dem Stand des Servers.
+     *
+     * <p>Der Client zaehlt beide Timer selbst herunter, und die Sperre laeuft auf beiden
+     * Seiten — sie muss denselben Stand kennen, sonst steht der Spieler vor einer Kuppel,
+     * durch die er laut Server hindurchdarf.
+     */
+    private static void updateSafeZoneLock() {
+        net.bananemdnsa.mchelden.world.SafeZone.setClientInCombat(isFighting());
     }
 
-    /** Balken sichtbar? Nach Kampfende noch waehrend des Ausblendens. */
-    public static boolean isCombatVisible() {
-        return combatTicks > 0 || combatExitTicks > 0;
+    /** Ist das mein Duellgegner? Der Glow fragt das pro Entitaet und Bild. */
+    public static boolean isDuelOpponent(net.minecraft.world.entity.Entity entity) {
+        return duelOpponentId != null && duelOpponentId.equals(entity.getUUID());
     }
 
-    /** 0.0 beim Einschweben, 1.0 wenn der Balken steht. */
-    public static float combatEnter(float partialTick) {
-        return 1f - Mth.clamp(Math.max(0f, combatEnterTicks - partialTick) / COMBAT_ENTER_TICKS, 0f, 1f);
+    public static TimerState combat() {
+        return COMBAT;
     }
 
-    /** 1.0 direkt nach Kampfende, 0.0 wenn der Balken weg ist. */
-    public static float combatExit(float partialTick) {
-        return Mth.clamp(Math.max(0f, combatExitTicks - partialTick) / COMBAT_EXIT_TICKS, 0f, 1f);
+    public static TimerState duel() {
+        return DUEL;
     }
 
-    /** 1.0 direkt nach einem Treffer, 0.0 wenn das Aufleuchten vorbei ist. */
-    public static float combatFlash(float partialTick) {
-        return Mth.clamp(Math.max(0f, combatFlashTicks - partialTick) / COMBAT_FLASH_TICKS, 0f, 1f);
-    }
-
-    public static boolean isInCombat() {
-        return combatTicks > 0;
+    /**
+     * Kampf oder Duell — fuer alles, was zwischen beiden nicht unterscheidet: die
+     * Kontingent-Anzeige und die Safezone-Sperre.
+     */
+    public static boolean isFighting() {
+        return COMBAT.isRunning() || DUEL.isRunning();
     }
 
     public static int getPearlsLeft() {
@@ -342,39 +333,20 @@ public final class ClientState {
         return cobwebsLeft;
     }
 
-    public static int getCombatTicks() {
-        return combatTicks;
-    }
-
     public static void tick() {
         if (pendingDelay > 0 && --pendingDelay == 0 && pendingSound != null) {
             play(pendingSound, pendingVolume, pendingPitch);
             pendingSound = null;
         }
 
-        if (combatTicks > 0) {
-            combatTicks--;
+        COMBAT.tick();
+        DUEL.tick();
 
-            // Der Client zaehlt selbst herunter und erreicht die Null oft einen Tick vor dem
-            // Paket vom Server. Das Kampfende haengt deswegen hier und nicht am Paket —
-            // sonst wird die Ausblendung genau beim regulaeren Ablaufen verschluckt.
-            if (combatTicks == 0) {
-                endCombat();
-            } else if (combatTicks <= COMBAT_WARNING_TICKS && combatTicks % 20 == 0) {
-                // Ticken in den letzten Sekunden. Ein Ton erreicht einen auch dann, wenn man
-                // gerade woanders hinschaut — anders als jedes Blinken.
-                float step = (COMBAT_WARNING_TICKS - combatTicks) / (float) COMBAT_WARNING_TICKS;
-                play(SoundEvents.NOTE_BLOCK_PLING.value(), 0.7f, 1.2f + step * 0.5f);
-            }
-        }
-        if (combatFlashTicks > 0) {
-            combatFlashTicks--;
-        }
-        if (combatEnterTicks > 0) {
-            combatEnterTicks--;
-        }
-        if (combatExitTicks > 0) {
-            combatExitTicks--;
+        // Der Glow haengt am laufenden Timer: laeuft der aus, geht der Gegner mit, ohne auf
+        // das Paket vom Server zu warten. Sonst leuchtete nach einem Debug-Duell, hinter dem
+        // gar kein Duell steht, eine Kuh bis zum Weltwechsel weiter.
+        if (duelOpponentId != null && !DUEL.isRunning()) {
+            duelOpponentId = null;
         }
 
         tickPlaytime();
@@ -398,9 +370,7 @@ public final class ClientState {
         // abgesunkenen Wand, durch die man trotzdem nicht hindurchkommt.
         DividerWall.setClientEdge(wallEdge(0f));
 
-        // Der Client zaehlt den Combat-Timer selbst herunter — die Safezone-Sperre haengt
-        // daran und muss denselben Stand kennen.
-        net.bananemdnsa.mchelden.world.SafeZone.setClientInCombat(combatTicks > 0);
+        updateSafeZoneLock();
 
         boolean wasRolling = BountyRoll.isRunning();
         BountyRoll.tick();
@@ -452,14 +422,14 @@ public final class ClientState {
         }
     }
 
-    private static void playDelayed(SoundEvent sound, float volume, float pitch, int delayTicks) {
+    static void playDelayed(SoundEvent sound, float volume, float pitch, int delayTicks) {
         pendingSound = sound;
         pendingVolume = volume;
         pendingPitch = pitch;
         pendingDelay = delayTicks;
     }
 
-    private static void play(SoundEvent sound, float volume, float pitch) {
+    static void play(SoundEvent sound, float volume, float pitch) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player != null) {
             player.playSound(sound, volume, pitch);
@@ -528,10 +498,9 @@ public final class ClientState {
         eliminationTicks = 0;
         eliminationVictim = "";
         eliminationKiller = "";
-        combatTicks = 0;
-        combatFlashTicks = 0;
-        combatEnterTicks = 0;
-        combatExitTicks = 0;
+        COMBAT.reset();
+        DUEL.reset();
+        duelOpponentId = null;
         pendingSound = null;
         pendingDelay = 0;
         pearlsLeft = 0;

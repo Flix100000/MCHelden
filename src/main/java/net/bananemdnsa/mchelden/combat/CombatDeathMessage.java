@@ -23,22 +23,51 @@ public final class CombatDeathMessage {
      *
      * <p>Bei einem direkten Kill durch den Gegner bleibt Vanilla zuständig — dessen
      * Nachrichten sind dort bereits richtig und kennen sogar die verwendete Waffe.
+     *
+     * <p>Im Duell gilt das nicht: dass es ein Duell war, steht in keiner Vanilla-Nachricht,
+     * und ohne diesen Hinweis versteht der Chat nicht, warum kein Herz gefallen ist.
      */
     @Nullable
     public static Component of(ServerPlayer victim) {
-        String opponent = CombatTracker.consumeCombatDeath(victim.getUUID());
-        if (opponent == null) {
+        CombatTracker.Death death = CombatTracker.consumeDeath(victim.getUUID());
+        if (death == null) {
             return null;
         }
 
         DamageSource source = victim.getLastDamageSource();
-        if (source != null && source.getEntity() instanceof ServerPlayer killer
-                && killer.getGameProfile().getName().equals(opponent)) {
+        boolean directKill = source != null && source.getEntity() instanceof ServerPlayer killer
+                && killer.getGameProfile().getName().equals(death.opponent());
+
+        if (directKill && !death.duel()) {
             return null;
         }
 
-        return Component.translatable(keyFor(source),
-                victim.getGameProfile().getName(), opponent);
+        return Component.translatable(
+                death.duel() ? duelKeyFor(source, directKill) : keyFor(source),
+                victim.getGameProfile().getName(), death.opponent());
+    }
+
+    /** Dieselbe Aufteilung fuer das Duell, plus der Fall, den es im Kampf nicht gibt. */
+    private static String duelKeyFor(@Nullable DamageSource source, boolean directKill) {
+        if (directKill) {
+            return "mchelden.death.duel.killed";
+        }
+        if (source == null) {
+            return "mchelden.death.duel.generic";
+        }
+        if (source.is(DamageTypeTags.IS_FALL)) {
+            return "mchelden.death.duel.fall";
+        }
+        if (source.is(DamageTypeTags.IS_DROWNING)) {
+            return "mchelden.death.duel.drown";
+        }
+        if (source.is(DamageTypeTags.IS_FIRE)) {
+            return "mchelden.death.duel.fire";
+        }
+        if (source.is(DamageTypeTags.IS_EXPLOSION)) {
+            return "mchelden.death.duel.explosion";
+        }
+        return "mchelden.death.duel.generic";
     }
 
     private static String keyFor(@Nullable DamageSource source) {

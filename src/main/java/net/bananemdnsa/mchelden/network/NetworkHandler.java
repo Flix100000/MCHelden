@@ -1,12 +1,15 @@
 package net.bananemdnsa.mchelden.network;
 
 import java.util.Optional;
+
+import javax.annotation.Nullable;
 import java.util.UUID;
 
 import net.bananemdnsa.mchelden.MCHelden;
 import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.combat.CombatTracker;
 import net.bananemdnsa.mchelden.combat.ItemQuota;
+import net.bananemdnsa.mchelden.duel.DuelManager;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.PlayerState;
@@ -35,6 +38,10 @@ public final class NetworkHandler {
                 CombatSyncPayload.TYPE,
                 CombatSyncPayload.STREAM_CODEC,
                 NetworkHandler::handleCombatOnClient);
+        registrar.playToClient(
+                DuelSyncPayload.TYPE,
+                DuelSyncPayload.STREAM_CODEC,
+                NetworkHandler::handleDuelOnClient);
         registrar.playToClient(
                 BountyRollPayload.TYPE,
                 BountyRollPayload.STREAM_CODEC,
@@ -66,6 +73,27 @@ public final class NetworkHandler {
                 CombatTracker.remainingTicks(player.getUUID()),
                 ItemQuota.remaining(player.getUUID(), ItemQuota.Kind.PEARL),
                 ItemQuota.remaining(player.getUUID(), ItemQuota.Kind.COBWEB)));
+    }
+
+    /**
+     * Schickt den Duell-Timer und den Gegner. Nur bei Aenderungen — den Timer zaehlt der
+     * Client selbst herunter.
+     */
+    public static void sendDuel(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, new DuelSyncPayload(
+                DuelManager.remainingTicks(player.getUUID()),
+                Optional.ofNullable(DuelManager.partnerOf(player.getUUID()))));
+    }
+
+    /**
+     * Schickt eine Duell-Anzeige, hinter der kein Duell steht. Nur fuer den Debug-Command.
+     *
+     * <p>Der Client zaehlt den Timer selbst herunter und raeumt Balken und Glow, wenn er
+     * ausgelaufen ist — es bleibt also nichts stehen, obwohl der Server nichts davon weiss.
+     */
+    public static void sendDuelShowcase(ServerPlayer player, @Nullable UUID opponent, int ticks) {
+        PacketDistributor.sendToPlayer(player,
+                new DuelSyncPayload(ticks, Optional.ofNullable(opponent)));
     }
 
     /** Startet beim Empfänger die Verlust-Animation. Beim Respawn schicken, nicht beim Tod. */
@@ -142,6 +170,10 @@ public final class NetworkHandler {
 
     private static void handleCombatOnClient(CombatSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onCombat(payload));
+    }
+
+    private static void handleDuelOnClient(DuelSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onDuel(payload));
     }
 
     private static void handleBountyRollOnClient(BountyRollPayload payload, IPayloadContext context) {

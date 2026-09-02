@@ -55,7 +55,7 @@ public final class ItemQuota {
      * <p>Ausserhalb des Kampfes immer true — das Kontingent gilt nur im Kampf.
      */
     public static boolean hasLeft(ServerPlayer player, Kind kind) {
-        if (!CombatTracker.isInCombat(player.getUUID())) {
+        if (!FightState.isFighting(player.getUUID())) {
             return true;
         }
 
@@ -65,7 +65,7 @@ public final class ItemQuota {
 
     /** Bucht einen Verbrauch. Ausserhalb des Kampfes passiert nichts. */
     public static void consume(ServerPlayer player, Kind kind) {
-        if (!CombatTracker.isInCombat(player.getUUID())) {
+        if (!FightState.isFighting(player.getUUID())) {
             return;
         }
 

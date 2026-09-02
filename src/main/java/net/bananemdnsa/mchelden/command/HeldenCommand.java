@@ -19,6 +19,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.combat.CombatTracker;
 import net.bananemdnsa.mchelden.combat.ItemQuota;
+import net.bananemdnsa.mchelden.duel.DuelManager;
 import net.bananemdnsa.mchelden.hearts.Elimination;
 import net.bananemdnsa.mchelden.phase.PhaseManager;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
@@ -47,6 +48,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.border.BorderStatus;
 import net.minecraft.world.level.border.WorldBorder;
 
@@ -59,13 +61,15 @@ public final class HeldenCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("helden")
-                .requires(source -> source.hasPermission(2))
+                .requires(HeldenPermission.root())
                 .then(Commands.literal("info")
+                        .requires(HeldenPermission.INFO::granted)
                         .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
                                 .executes(context -> info(
                                         context.getSource(),
                                         GameProfileArgument.getGameProfiles(context, "spieler")))))
                 .then(Commands.literal("heart")
+                        .requires(HeldenPermission.HEART::granted)
                         .then(heartDeltaBranch("give", 1))
                         .then(heartDeltaBranch("remove", -1))
                         .then(Commands.literal("set")
@@ -77,6 +81,7 @@ public final class HeldenCommand {
                                                         GameProfileArgument.getGameProfiles(context, "spieler"),
                                                         IntegerArgumentType.getInteger(context, "anzahl")))))))
                 .then(Commands.literal("revive")
+                        .requires(HeldenPermission.REVIVE::granted)
                         .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
                                 .executes(context -> revive(
                                         context.getSource(),
@@ -89,20 +94,32 @@ public final class HeldenCommand {
                                                 GameProfileArgument.getGameProfiles(context, "spieler"),
                                                 IntegerArgumentType.getInteger(context, "herzen"))))))
                 .then(Commands.literal("combat")
+                        .requires(HeldenPermission.COMBAT::granted)
                         .then(Commands.literal("clear")
                                 .then(Commands.argument("spieler", EntityArgument.players())
                                         .executes(context -> combatClear(
                                                 context.getSource(),
                                                 EntityArgument.getPlayers(context, "spieler"))))))
+                .then(Commands.literal("duell")
+                        .requires(HeldenPermission.DUELL::granted)
+                        .then(Commands.literal("clear")
+                                .then(Commands.argument("spieler", EntityArgument.players())
+                                        .executes(context -> duelClear(
+                                                context.getSource(),
+                                                EntityArgument.getPlayers(context, "spieler"))))))
                 .then(Commands.literal("bounty")
+                        .requires(HeldenPermission.branch("bounty"))
                         .then(Commands.literal("roll")
+                                .requires(HeldenPermission.BOUNTY_ROLL::granted)
                                 .executes(context -> bountyRoll(context.getSource())))
                         .then(Commands.literal("show")
+                                .requires(HeldenPermission.BOUNTY_SHOW::granted)
                                 .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
                                         .executes(context -> bountyShow(
                                                 context.getSource(),
                                                 GameProfileArgument.getGameProfiles(context, "spieler")))))
                         .then(Commands.literal("set")
+                                .requires(HeldenPermission.BOUNTY_SET::granted)
                                 .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
                                         .then(Commands.argument("ziel", GameProfileArgument.gameProfile())
                                                 .executes(context -> bountySet(
@@ -110,12 +127,14 @@ public final class HeldenCommand {
                                                         GameProfileArgument.getGameProfiles(context, "spieler"),
                                                         GameProfileArgument.getGameProfiles(context, "ziel"))))))
                         .then(Commands.literal("clear")
+                                .requires(HeldenPermission.BOUNTY_CLEAR::granted)
                                 .executes(context -> bountyClearAll(context.getSource()))
                                 .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
                                         .executes(context -> bountyClear(
                                                 context.getSource(),
                                                 GameProfileArgument.getGameProfiles(context, "spieler"))))))
                 .then(Commands.literal("debug")
+                        .requires(HeldenPermission.DEBUG::granted)
                         .then(Commands.literal("combat")
                                 .executes(context -> debugCombat(context.getSource())))
                         .then(Commands.literal("bounty")
@@ -124,6 +143,12 @@ public final class HeldenCommand {
                                         .executes(context -> debugBounty(
                                                 context.getSource(),
                                                 GameProfileArgument.getGameProfiles(context, "ziel")))))
+                        .then(Commands.literal("duell")
+                                .executes(context -> debugDuel(context.getSource(), null))
+                                .then(Commands.argument("ziel", EntityArgument.player())
+                                        .executes(context -> debugDuel(
+                                                context.getSource(),
+                                                EntityArgument.getPlayer(context, "ziel")))))
                         .then(Commands.literal("quota")
                                 .executes(context -> debugQuota(context.getSource())))
                         .then(Commands.literal("playtime")
@@ -139,11 +164,15 @@ public final class HeldenCommand {
                         .then(Commands.literal("animation")
                                 .executes(context -> debugAnimation(context.getSource()))))
                 .then(Commands.literal("phase")
+                        .requires(HeldenPermission.branch("phase"))
                         .then(Commands.literal("info")
+                                .requires(HeldenPermission.PHASE_INFO::granted)
                                 .executes(context -> phaseInfo(context.getSource())))
                         .then(Commands.literal("next")
+                                .requires(HeldenPermission.PHASE_NEXT::granted)
                                 .executes(context -> phaseNext(context.getSource())))
                         .then(Commands.literal("set")
+                                .requires(HeldenPermission.PHASE_SET::granted)
                                 .then(Commands.argument("phase", StringArgumentType.word())
                                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(
                                                 Arrays.stream(Phase.values()).map(Phase::getId), builder))
@@ -151,11 +180,13 @@ public final class HeldenCommand {
                                                 context.getSource(),
                                                 StringArgumentType.getString(context, "phase"))))))
                 .then(Commands.literal("wall")
+                        .requires(HeldenPermission.WALL::granted)
                         .then(Commands.literal("drop")
                                 .executes(context -> wall(context.getSource(), false)))
                         .then(Commands.literal("raise")
                                 .executes(context -> wall(context.getSource(), true))))
                 .then(Commands.literal("finalwar")
+                        .requires(HeldenPermission.FINALWAR::granted)
                         .then(Commands.literal("start")
                                 .executes(context -> finalWarStart(context.getSource(), null))
                                 .then(Commands.argument("dauer", StringArgumentType.word())
@@ -165,6 +196,7 @@ public final class HeldenCommand {
                         .then(Commands.literal("stop")
                                 .executes(context -> finalWarStop(context.getSource()))))
                 .then(Commands.literal("border")
+                        .requires(HeldenPermission.BORDER::granted)
                         .then(Commands.literal("shrink")
                                 .then(Commands.argument("groesse", IntegerArgumentType.integer(
                                                 16, (int) BorderController.START_SIZE))
@@ -175,13 +207,20 @@ public final class HeldenCommand {
                                                         StringArgumentType.getString(context, "dauer"))))))
                         .then(Commands.literal("reset")
                                 .executes(context -> borderReset(context.getSource()))))
+                // Die argumentlose Form zeigt die Mitte nur an und haengt deswegen an der
+                // Pruefung des Zweiges: wer sie verschieben darf, darf sie auch lesen.
+                // Umgekehrt gilt das nicht, die drei schreibenden Formen fragen `center.set`.
                 .then(Commands.literal("center")
+                        .requires(HeldenPermission.branch("center"))
                         .executes(context -> centerShow(context.getSource()))
                         .then(Commands.literal("here")
+                                .requires(HeldenPermission.CENTER_SET::granted)
                                 .executes(context -> centerHere(context.getSource())))
                         .then(Commands.literal("reset")
+                                .requires(HeldenPermission.CENTER_SET::granted)
                                 .executes(context -> centerReset(context.getSource())))
                         .then(Commands.argument("x", IntegerArgumentType.integer())
+                                .requires(HeldenPermission.CENTER_SET::granted)
                                 .then(Commands.argument("z", IntegerArgumentType.integer())
                                         .executes(context -> centerMove(
                                                 context.getSource(),
@@ -189,12 +228,15 @@ public final class HeldenCommand {
                                                 IntegerArgumentType.getInteger(context, "z"))))))
                 .then(ResetCommand.build())
                 .then(Commands.literal("time")
+                        .requires(HeldenPermission.branch("time"))
                         .then(Commands.literal("check")
+                                .requires(HeldenPermission.TIME_CHECK::granted)
                                 .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
                                         .executes(context -> timeCheck(
                                                 context.getSource(),
                                                 GameProfileArgument.getGameProfiles(context, "spieler")))))
                         .then(Commands.literal("add")
+                                .requires(HeldenPermission.TIME_ADD::granted)
                                 .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
                                         .then(Commands.argument("minuten",
                                                         IntegerArgumentType.integer(-MAX_TIME_MINUTES,
@@ -204,6 +246,7 @@ public final class HeldenCommand {
                                                         GameProfileArgument.getGameProfiles(context, "spieler"),
                                                         IntegerArgumentType.getInteger(context, "minuten"))))))
                         .then(Commands.literal("set")
+                                .requires(HeldenPermission.TIME_SET::granted)
                                 .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
                                         .then(Commands.argument("minuten",
                                                         IntegerArgumentType.integer(0, MAX_TIME_MINUTES))
@@ -239,6 +282,8 @@ public final class HeldenCommand {
                 playtimeValue(source.getServer(), state)), false);
         source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.combat",
                 combatValue(state.getUuid())), false);
+        source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.duel",
+                duelValue(source.getServer(), state.getUuid())), false);
         source.sendSuccess(() -> HeldenText.infoLine("mchelden.command.info.status",
                 state.isEliminated() ? HeldenText.statusEliminated() : HeldenText.statusActive()), false);
     }
@@ -272,6 +317,18 @@ public final class HeldenCommand {
         return ticks <= 0
                 ? HeldenText.infoNone()
                 : Component.literal(formatDuration(ticks / 20)).withStyle(ChatFormatting.RED);
+    }
+
+    /** Duellgegner und Restzeit, oder "keins". */
+    private static Component duelValue(MinecraftServer server, UUID uuid) {
+        UUID partner = DuelManager.partnerOf(uuid);
+        if (partner == null) {
+            return HeldenText.duelNone();
+        }
+
+        PlayerState partnerState = PlayerStateStore.get(server).find(partner);
+        return HeldenText.duelValue(partnerState != null ? partnerState.getName() : "",
+                Component.literal(formatDuration(DuelManager.remainingTicks(uuid) / 20)));
     }
 
     private static Component heartsValue(int hearts) {
@@ -459,6 +516,59 @@ public final class HeldenCommand {
 
         source.sendSuccess(() -> HeldenText.bountyDebug(nameOf(target)), false);
         return 1;
+    }
+
+    /**
+     * Startet ein Duell ohne Anfrage — gegen das genannte Ziel, sonst gegen einen
+     * zufaelligen Anwesenden.
+     *
+     * <p>Allein im Einzelspieler laeuft stattdessen nur die Anzeige: ein Duell mit sich
+     * selbst waere ein kaputter Zustand. Der Balken kommt dann als reines Paket, und zum
+     * Leuchten bekommt der Spieler die naechste Kreatur — siehe
+     * {@link DuelManager#showcase(ServerPlayer)}.
+     */
+    private static int debugDuel(CommandSourceStack source, @Nullable ServerPlayer target)
+            throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        MinecraftServer server = source.getServer();
+
+        ServerPlayer opponent = target != null ? target : pickOnlineOpponent(server, player);
+        if (opponent != null && !opponent.getUUID().equals(player.getUUID())) {
+            DuelManager.forceOpen(server, player, opponent);
+            source.sendSuccess(() -> HeldenText.duelDebug(opponent.getGameProfile().getName()), false);
+            return 1;
+        }
+
+        // Allein: nur die Anzeige, ohne Duell dahinter.
+        LivingEntity glowing = DuelManager.showcase(player);
+        source.sendSuccess(() -> glowing == null
+                ? HeldenText.duelDebugSoloEmpty()
+                : HeldenText.duelDebugSolo(glowing.getDisplayName()), false);
+        return 1;
+    }
+
+    /** Ein zufaelliger anderer Anwesender, oder {@code null} wenn man allein ist. */
+    @Nullable
+    private static ServerPlayer pickOnlineOpponent(MinecraftServer server, ServerPlayer player) {
+        List<ServerPlayer> others = new ArrayList<>(server.getPlayerList().getPlayers());
+        others.remove(player);
+
+        return others.isEmpty()
+                ? null
+                : others.get(server.overworld().getRandom().nextInt(others.size()));
+    }
+
+    /** Beendet ein Duell von Hand. Reparaturwerkzeug wie {@code /helden combat clear}. */
+    private static int duelClear(CommandSourceStack source, Collection<ServerPlayer> players) {
+        for (ServerPlayer player : players) {
+            String name = player.getGameProfile().getName();
+            if (DuelManager.clear(source.getServer(), player.getUUID())) {
+                source.sendSuccess(() -> HeldenText.duelCleared(name), true);
+            } else {
+                source.sendSuccess(() -> HeldenText.duelCommandNone(name), false);
+            }
+        }
+        return players.size();
     }
 
     /** Ein zufaelliger anderer Anwesender, sonst man selbst. */

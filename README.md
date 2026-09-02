@@ -20,6 +20,7 @@ grave screen and the renderers for the wall and the safe zone are client code.
 - [Game systems](#game-systems)
   - [Hearts](#hearts)
   - [The combat timer](#the-combat-timer)
+  - [Duels](#duels)
   - [Graves](#graves)
   - [Bounty](#bounty)
   - [Phases](#phases)
@@ -33,6 +34,7 @@ grave screen and the renderers for the wall and the safe zone are client code.
 - [Command reference](#command-reference)
   - [Players and hearts](#players-and-hearts)
   - [Combat](#combat)
+  - [Duels](#duels-1)
   - [Bounty commands](#bounty-commands)
   - [Phase control](#phase-control)
   - [Wall](#wall)
@@ -42,6 +44,7 @@ grave screen and the renderers for the wall and the safe zone are client code.
   - [Reset](#reset)
   - [Debug](#debug)
   - [Duration format](#duration-format)
+  - [Permissions](#permissions)
 - [Development](#development)
 - [License](#license)
 
@@ -131,6 +134,46 @@ much as you like.
 
 Golden apples are deliberately not on the list: without the Nether every ingot comes from
 ordinary mining, and eight ingots per apple already limits them through the world itself.
+
+### Duels
+
+Two players agree to a fight that **costs no heart**. `/duell <player>` sends a request, the
+target accepts with a button in chat, and the duel starts right away.
+
+| | |
+|---|---|
+| Timer | starts at 30 seconds, same rules as the combat timer, blue instead of red |
+| Heart | a death while the duel timer runs costs none — grave, item split and XP are untouched |
+| Glow | each duellist sees the other outlined in blue, and nobody else sees anything |
+| Bounty | a duel kill never resolves a bounty, not even against your own bounty target |
+| Request | expires after 60 seconds |
+
+The death rule hangs off the timer, not off the damage source — the same definition as in
+combat, only with the opposite result. Whoever falls into a ravine fleeing their duel partner
+died in the duel.
+
+**A request needs all of this**, checked when it is sent and again when it is accepted, since
+any of it can change in the sixty seconds between: both out of the combat timer, neither in
+another duel or request, at most 100 blocks apart, neither inside the safe zone, and the
+target still in the game. Each unmet condition gets its own message — a blanket "no" leaves
+the player guessing and trying again straight away.
+
+A duel ends when someone dies, when the timer runs out, when someone logs out — that one is
+free of charge, there was no heart at stake — when someone gives up, or when a third player
+interferes.
+
+**Interference** is any hit between a duellist and someone who is not their duel partner, in
+either direction. The duel then breaks apart for both, and the duel timer carries over into a
+combat timer with the same time left and the same hit count. Without that carry-over the duel
+would be a loophole: whoever is losing has a friend land one hit, and walks away with no timer
+at all — free to log out or reach the safe zone in the middle of a lost fight.
+
+While the duel timer runs, containers stay locked, the pearl and cobweb quotas apply and the
+safe zone stays shut, exactly as in combat. The daily playtime kick is **not** deferred: no
+heart is at stake, so there is nothing to defer.
+
+Like the combat timer, none of this is persisted — a logout ends the duel, so there can be no
+saved duel state to restore.
 
 ### Graves
 
@@ -365,7 +408,9 @@ this takes them out of the game.
 
 ## Command reference
 
-Everything lives under `/helden` and requires **permission level 2**.
+Everything lives under `/helden`. Without a permission plugin every branch needs
+**permission level 2**, exactly as before. With one, each branch asks for its own node so
+roles can be cut finer — see [Permissions](#permissions).
 
 Where a command takes a `<player>`, it accepts an offline player's name too — the game profile
 is resolved, not the online entity. `/helden combat clear` is the exception: it targets online
@@ -388,6 +433,18 @@ Heart changes are broadcast. `/helden info` is private to the caller.
 | Command | Effect |
 |---|---|
 | `/helden combat clear <player>` | Ends the combat timer for online players. Broadcast |
+
+### Duels
+
+`/duell` is open to everyone — it is the one command that is not part of `/helden`.
+
+| Command | Effect |
+|---|---|
+| `/duell <player>` | Send a duel request |
+| `/duell accept <player>` | Accept their request |
+| `/duell deny <player>` | Decline it |
+| `/duell cancel` | Withdraw your own request, or give up a running duel |
+| `/helden duell clear <player>` | End a duel by hand, for repairs |
 
 ### Bounty commands
 
@@ -486,6 +543,7 @@ the caller and report only to them.
 |---|---|
 | `/helden debug combat` | Puts a hit on yourself. The combat HUD cannot be looked at alone otherwise |
 | `/helden debug bounty [target]` | Replays the wheel of fortune without changing anything. Rolls onto your actual target by default. Alone on a server it just plays the animation |
+| `/helden debug duell [target]` | Starts a duel without a request and without conditions. Alone on a server it sends the display only — the bar plus the nearest creature glowing, since a duel with yourself would be a broken state |
 | `/helden debug quota` | Drains your quotas so the exhausted state can be looked at |
 | `/helden debug playtime` | Toggles your own operator exemption from the time limit. Forgotten on logout — which is what makes it safe: anyone who kicks themselves out with it is back in on the next attempt |
 | `/helden debug render` | Asks server *and* client what they know about the wall and the safe zone. If the screen stays blank, this separates the possible causes instead of leaving them to be guessed |
@@ -500,6 +558,67 @@ the caller and report only to them.
 part is optional but at least one has to be there. **A bare number is rejected, not guessed** —
 `3` could mean three hours or three minutes, and the difference is a whole evening. Maximum 12
 hours.
+
+### Permissions
+
+Every branch of `/helden` asks for its own permission node, so a role can be allowed to hand
+out hearts without being allowed to advance the phase. **Node names are command paths**:
+`mchelden.command.phase.next` is `/helden phase next`. Where the leaves of a branch carry the
+same power the name stops at the branch — `mchelden.command.heart` covers `give`, `remove` and
+`set` together, because whoever may give hearts may take them.
+
+| Node | Covers |
+|---|---|
+| `mchelden.command.info` | `/helden info <player>` |
+| `mchelden.command.heart` | `heart give` / `remove` / `set` |
+| `mchelden.command.revive` | `revive <player> [hearts]` |
+| `mchelden.command.combat` | `combat clear` |
+| `mchelden.command.duell` | the duel branch |
+| `mchelden.command.debug` | all nine `debug` branches (read-only) |
+| `mchelden.command.bounty.show` | `bounty show` |
+| `mchelden.command.bounty.roll` | `bounty roll` |
+| `mchelden.command.bounty.set` | `bounty set` |
+| `mchelden.command.bounty.clear` | `bounty clear` |
+| `mchelden.command.phase.info` | `phase info` |
+| `mchelden.command.phase.next` | `phase next` |
+| `mchelden.command.phase.set` | `phase set <phase>` |
+| `mchelden.command.wall` | `wall drop` / `raise` |
+| `mchelden.command.finalwar` | `finalwar start` / `stop` |
+| `mchelden.command.border` | `border shrink` / `reset` |
+| `mchelden.command.center.show` | `/helden center` with no argument |
+| `mchelden.command.center.set` | `center here` / `reset` / `<x> <z>` |
+| `mchelden.command.time.check` | `time check` |
+| `mchelden.command.time.add` | `time add` |
+| `mchelden.command.time.set` | `time set` |
+| `mchelden.command.reset.hearts` | `reset hearts` |
+| `mchelden.command.reset.bounty` | `reset bounty` |
+| `mchelden.command.reset.time` | `reset time` |
+| `mchelden.command.reset.graves` | `reset graves` |
+| `mchelden.command.reset.all` | `reset all` |
+
+Two names are not literal paths: `center.show` is the argumentless form, `center.set` is the
+three writing forms together. They sit side by side so that `mchelden.command.center.*` catches
+both. `phase.next` and `phase.set` are deliberately separate, because `set` can also jump
+backwards.
+
+**Without a permission plugin nothing changes.** Each node falls back to permission level 2,
+the threshold that used to apply to the whole tree.
+
+On NeoForge, LuckPerms registers itself as the handler for the permission API and reads these
+node names unchanged, wildcards included:
+
+```
+lp group moderator permission set mchelden.command.bounty.* true
+lp group moderator permission set mchelden.command.heart true
+lp group moderator permission set mchelden.command.revive true
+lp group moderator permission set mchelden.command.time.* true
+lp group moderator permission set mchelden.command.phase.info true
+
+lp group admin permission set mchelden.command.* true
+```
+
+Leaving `mchelden.command.phase.next` unset is what keeps that group from advancing the game.
+A player holding none of the nodes does not see `/helden` at all.
 
 ---
 

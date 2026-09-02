@@ -3,6 +3,7 @@ package net.bananemdnsa.mchelden.combat;
 import java.util.UUID;
 
 import net.bananemdnsa.mchelden.bounty.BountyManager;
+import net.bananemdnsa.mchelden.duel.DuelManager;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.phase.PhaseManager;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
@@ -42,6 +43,18 @@ public final class CombatEvents {
             return;
         }
 
+        // Die beiden Verabredeten unter sich: der Duell-Timer laeuft, der Combat-Timer
+        // bleibt aus. Genau daran haengt, dass dieser Tod kein Herz kostet.
+        if (DuelManager.arePartners(attacker.getUUID(), victim.getUUID())) {
+            DuelManager.onHit(attacker, victim);
+            return;
+        }
+
+        // Ein Dritter ist im Spiel. Beide Duelle platzen, bevor der Treffer normal zaehlt —
+        // danach ueberschreibt der Treffer den Gegner der Beteiligten ohnehin richtig.
+        DuelManager.breakUp(attacker);
+        DuelManager.breakUp(victim);
+
         CombatTracker.onPlayerHit(attacker, victim);
     }
 
@@ -58,7 +71,17 @@ public final class CombatEvents {
         }
 
         MinecraftServer server = victim.getServer();
-        if (server == null || !CombatTracker.isInCombat(victim.getUUID())) {
+        if (server == null) {
+            return;
+        }
+
+        // Das Duell zuerst: es schliesst den Combat-Timer aus, und dieser Tod kostet kein
+        // Herz. Grab, Itemsplit und XP laufen trotzdem — geschuetzt ist nur das Herz.
+        if (DuelManager.onDeath(server, victim)) {
+            return;
+        }
+
+        if (!CombatTracker.isInCombat(victim.getUUID())) {
             return;
         }
 
@@ -88,18 +111,24 @@ public final class CombatEvents {
      * alles was nach dem Sterben kaeme faende dann nie statt.
      */
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)
-                || !CombatTracker.isInCombat(player.getUUID())) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
 
-        CombatLogout.handle(player);
+        // Straffrei: im Duell stand kein Herz auf dem Spiel, es gibt also nichts, wovor ein
+        // Logout schuetzen koennte. Raeumt nebenbei eine offene Anfrage weg.
+        DuelManager.onLogout(player);
+
+        if (CombatTracker.isInCombat(player.getUUID())) {
+            CombatLogout.handle(player);
+        }
     }
 
     public static void onServerTick(ServerTickEvent.Post event) {
         CombatTracker.tick(event.getServer());
         HeartManager.tick(event.getServer());
         BountyManager.tick(event.getServer());
+        DuelManager.tick(event.getServer());
         PhaseManager.tick(event.getServer());
         FinalWarBar.tick(event.getServer());
         SafeZone.tickBurst(event.getServer());

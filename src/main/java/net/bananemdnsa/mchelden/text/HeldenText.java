@@ -514,6 +514,22 @@ public final class HeldenText {
                 .withStyle(ChatFormatting.GRAY);
     }
 
+    public static Component duelDebug(String opponent) {
+        return Component.translatable("mchelden.command.debug.duel", opponent)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Der Alleingang: kein Duell dahinter, nur Balken und Glow. */
+    public static Component duelDebugSolo(Component glowing) {
+        return Component.translatable("mchelden.command.debug.duel.solo", glowing)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component duelDebugSoloEmpty() {
+        return Component.translatable("mchelden.command.debug.duel.solo.empty")
+                .withStyle(ChatFormatting.GRAY);
+    }
+
     public static Component duelCommandNone(String player) {
         return Component.translatable("mchelden.command.duel.none", player)
                 .withStyle(ChatFormatting.GRAY);

@@ -48,7 +48,7 @@ public final class QuotaHud {
     public static void render(GuiGraphics graphics, DeltaTracker delta) {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
-        if (player == null || minecraft.options.hideGui || !ClientState.isInCombat()) {
+        if (player == null || minecraft.options.hideGui || !ClientState.isFighting()) {
             return;
         }
 
@@ -131,7 +131,7 @@ public final class QuotaHud {
      */
     public static void onScreenRender(ScreenEvent.Render.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || !ClientState.isInCombat()
+        if (minecraft.player == null || !ClientState.isFighting()
                 || !(event.getScreen() instanceof AbstractContainerScreen<?> screen)) {
             return;
         }

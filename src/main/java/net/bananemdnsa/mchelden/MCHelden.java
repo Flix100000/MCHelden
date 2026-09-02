@@ -12,7 +12,9 @@ import net.bananemdnsa.mchelden.registry.MCHeldenBiomeModifiers;
 import net.bananemdnsa.mchelden.registry.MCHeldenBlockEntities;
 import net.bananemdnsa.mchelden.registry.MCHeldenBlocks;
 import net.bananemdnsa.mchelden.registry.MCHeldenMenus;
+import net.bananemdnsa.mchelden.command.DuelCommand;
 import net.bananemdnsa.mchelden.command.HeldenCommand;
+import net.bananemdnsa.mchelden.command.HeldenPermission;
 import net.bananemdnsa.mchelden.hearts.Elimination;
 import net.bananemdnsa.mchelden.hearts.HeartEvents;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
@@ -39,6 +41,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.server.permission.events.PermissionGatherEvent;
 
 import org.slf4j.Logger;
 
@@ -59,6 +62,7 @@ public class MCHelden {
         modEventBus.addListener(this::registerPayloads);
 
         NeoForge.EVENT_BUS.addListener(this::registerCommands);
+        NeoForge.EVENT_BUS.addListener(this::gatherPermissions);
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
         NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
         NeoForge.EVENT_BUS.addListener(HeartEvents::onRespawn);
@@ -98,6 +102,17 @@ public class MCHelden {
 
     private void registerCommands(RegisterCommandsEvent event) {
         HeldenCommand.register(event.getDispatcher());
+        DuelCommand.register(event.getDispatcher());
+    }
+
+    /**
+     * Meldet die Rechte an, mit denen {@code /helden} aufgeteilt ist.
+     *
+     * <p>Muss sein, bevor der erste Zweig gefragt wird — die Permission-API weist Nodes ab,
+     * die sie nicht kennt.
+     */
+    private void gatherPermissions(PermissionGatherEvent.Nodes event) {
+        HeldenPermission.gather(event);
     }
 
     /**
