@@ -5,7 +5,7 @@ around a single scarce resource: hearts.
 
 **Minecraft 1.21.1 · NeoForge 21.1.248 · Java 21**
 
-The mod builds game systems, plus four deliberate loot and spawn rules. It does not touch world
+The mod builds game systems, plus five deliberate loot and spawn rules. It does not touch world
 generation and does not block items. What data it does ship *modifies* vanilla tables rather
 than replacing them, so it sits alongside History Stages' data pack instead of fighting it.
 
@@ -317,15 +317,24 @@ it has to be set before the world exists.
 
 ### Loot and spawns
 
-Four deliberate exceptions to "game systems only". Three of them are data files that modify
+Five deliberate exceptions to "game systems only". Four of them are data files that modify
 vanilla tables instead of replacing them, so other mods and data packs keep working; the
-fourth changes a drop chance rather than the loot itself, and is explained below.
+fifth changes a drop chance rather than the loot itself, and is explained below.
 
 **Ancient city trims in shipwrecks.** The two trims that only exist in the ancient city —
 `silence` and `ward` — also turn up in all three shipwreck chests, at exactly the chances they
 have at home: 1/80 for silence, 4/80 for ward. The numbers are not copied by hand; a test
 compares them against Mojang's own `ancient_city.json`, so a vanilla change to those weights
 shows up as a failing test. The shipwreck's own `coast` trim is untouched.
+
+**Sand gives up quartz.** Gravel drops flint on a sliding scale: 10 %, then 14 %, 25 % and
+100 % with Fortune I to III. Sand and red sand now do the same with nether quartz, at exactly
+double those chances — 20 %, 29 %, 50 %, and 100 % again, because gravel already reaches
+certainty at Fortune III and there is nothing left to double. The scale is not copied by hand;
+a test derives it from Mojang's own `gravel.json`. Unlike flint, the quartz arrives *on top of*
+the sand rather than instead of it: a loot modifier can add to a vanilla table but not take
+from it, and rewriting `blocks/sand` outright is the one thing this mod does not do. Silk touch
+switches it off the way it does for flint, and sand lost to an explosion leaves nothing behind.
 
 **Mending can be fished up.** In vanilla it can, in theory: through a treasure catch, one
 book among six entries, randomly enchanted. Multiply those three out and you are into tens of
