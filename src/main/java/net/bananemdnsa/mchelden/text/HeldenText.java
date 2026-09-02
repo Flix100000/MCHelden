@@ -4,7 +4,9 @@ import net.minecraft.ChatFormatting;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.PlayerState;
 
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 
 /**
  * Alle spielersichtbaren Texte an einer Stelle, als Übersetzungsschlüssel.
@@ -436,5 +438,84 @@ public final class HeldenText {
     public static Component phaseUnknown(String valid) {
         return Component.translatable("mchelden.command.phase.unknown", valid)
                 .withStyle(ChatFormatting.RED);
+    }
+
+    /**
+     * Die Duell-Anfrage mit ihren beiden Schaltflaechen.
+     *
+     * <p>Die Commands dahinter gibt es auch zum Tippen. Anklickbar sind sie trotzdem: wer
+     * mitten im Spiel steht, tippt keinen Namen ab.
+     */
+    public static Component duelRequest(String requester) {
+        return Component.translatable("mchelden.duel.request.received", requester)
+                .withStyle(ChatFormatting.AQUA)
+                .append(Component.literal("  "))
+                .append(duelButton("mchelden.duel.request.accept", ChatFormatting.GREEN,
+                        "/duell accept " + requester))
+                .append(Component.literal(" "))
+                .append(duelButton("mchelden.duel.request.deny", ChatFormatting.RED,
+                        "/duell deny " + requester));
+    }
+
+    private static Component duelButton(String key, ChatFormatting color, String command) {
+        return Component.translatable(key).withStyle(style -> style
+                .withColor(color)
+                .withBold(true)
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                        Component.translatable(key + ".hover"))));
+    }
+
+    public static Component duelRequestSent(String target) {
+        return Component.translatable("mchelden.duel.request.sent", target)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Eine gewoehnliche Duell-Zeile mit einem Namen darin. */
+    public static Component duelLine(String key, String player) {
+        return Component.translatable(key, player).withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Eine ohne Namen — etwa das Platzen, bei dem der Dritte nichts zur Sache tut. */
+    public static Component duelLine(String key) {
+        return Component.translatable(key).withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Der Duellbeginn und der Sieg: die beiden Momente, die auffallen sollen. */
+    public static Component duelHighlight(String key, String player) {
+        return Component.translatable(key, player).withStyle(ChatFormatting.AQUA);
+    }
+
+    public static Component duelDenied(String key, String player) {
+        return Component.translatable(key, player).withStyle(ChatFormatting.RED);
+    }
+
+    public static Component duelDenied(String key) {
+        return Component.translatable(key).withStyle(ChatFormatting.RED);
+    }
+
+    public static Component duelDeniedDistance(String player, int blocks) {
+        return Component.translatable("mchelden.duel.deny.distance", player, blocks)
+                .withStyle(ChatFormatting.RED);
+    }
+
+    public static Component duelNone() {
+        return Component.translatable("mchelden.command.info.duel.none")
+                .withStyle(ChatFormatting.DARK_GRAY);
+    }
+
+    public static Component duelValue(String partner, Component remaining) {
+        return Component.translatable("mchelden.command.info.duel.value", partner, remaining)
+                .withStyle(ChatFormatting.AQUA);
+    }
+
+    public static Component duelCleared(String player) {
+        return Component.translatable("mchelden.command.duel.cleared", player)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component duelCommandNone(String player) {
+        return Component.translatable("mchelden.command.duel.none", player)
+                .withStyle(ChatFormatting.GRAY);
     }
 }
