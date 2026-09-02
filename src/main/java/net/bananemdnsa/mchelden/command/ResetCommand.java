@@ -68,11 +68,13 @@ public final class ResetCommand {
     /** Haengt sich unter {@code /helden} ein. */
     public static LiteralArgumentBuilder<CommandSourceStack> build() {
         return Commands.literal("reset")
-                .then(branch("hearts", ResetCommand::hearts))
-                .then(branch("bounty", ResetCommand::bounty))
-                .then(branch("time", ResetCommand::time))
-                .then(branch("graves", ResetCommand::graves))
+                .requires(HeldenPermission.branch("reset"))
+                .then(branch("hearts", HeldenPermission.RESET_HEARTS, ResetCommand::hearts))
+                .then(branch("bounty", HeldenPermission.RESET_BOUNTY, ResetCommand::bounty))
+                .then(branch("time", HeldenPermission.RESET_TIME, ResetCommand::time))
+                .then(branch("graves", HeldenPermission.RESET_GRAVES, ResetCommand::graves))
                 .then(Commands.literal("all")
+                        .requires(HeldenPermission.RESET_ALL::granted)
                         .executes(context -> all(context.getSource())));
     }
 
@@ -133,9 +135,18 @@ public final class ResetCommand {
         NetworkHandler.syncAll(server);
     }
 
-    /** Ein Zweig mit optionalem Spielerziel. Ohne Argument global. */
-    private static LiteralArgumentBuilder<CommandSourceStack> branch(String name, Reset reset) {
+    /**
+     * Ein Zweig mit optionalem Spielerziel. Ohne Argument global.
+     *
+     * <p>Jeder Zweig hat sein eigenes Recht: die vier Teil-Resets sind Korrekturen an
+     * einzelnen Spielern, {@code reset all} loescht den Spielstand. Das ist nicht dieselbe
+     * Macht und deswegen auch nicht derselbe Node.
+     */
+    private static LiteralArgumentBuilder<CommandSourceStack> branch(String name,
+                                                                    HeldenPermission permission,
+                                                                    Reset reset) {
         return Commands.literal(name)
+                .requires(permission::granted)
                 .executes(context -> reset.apply(context.getSource(), null))
                 .then(Commands.argument("spieler", GameProfileArgument.gameProfile())
                         .executes(context -> reset.apply(
