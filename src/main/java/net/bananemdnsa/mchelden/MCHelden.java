@@ -16,6 +16,7 @@ import net.bananemdnsa.mchelden.command.HeldenCommand;
 import net.bananemdnsa.mchelden.hearts.Elimination;
 import net.bananemdnsa.mchelden.hearts.HeartEvents;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
+import net.bananemdnsa.mchelden.loot.DrownedTrident;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
 import net.bananemdnsa.mchelden.state.PlayerState;
@@ -88,6 +89,7 @@ public class MCHelden {
         NeoForge.EVENT_BUS.addListener(SafeZone::onPlace);
         NeoForge.EVENT_BUS.addListener(SafeZone::onPlayerTick);
         NeoForge.EVENT_BUS.addListener(SafeZone::onSpawn);
+        NeoForge.EVENT_BUS.addListener(DrownedTrident::onEntityJoin);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
