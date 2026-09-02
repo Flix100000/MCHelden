@@ -34,7 +34,7 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 /**
- * Die Safezone: ein Zylinder um 0,0, in dem niemand angreifen kann.
+ * Die Safezone: ein Zylinder um die Arenamitte, in dem niemand angreifen kann.
  *
  * <p><b>Ein Zylinder und keine Kugel.</b> Eine Kugel verlaesst man, indem man hochbaut —
  * wer sich bei 0,0 eine Plattform setzt, waere ploetzlich angreifbar, ohne dass sich etwas

@@ -8,6 +8,7 @@ import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.state.Side;
+import net.bananemdnsa.mchelden.world.ArenaCenter;
 import net.bananemdnsa.mchelden.world.DividerWall;
 
 import net.minecraft.network.chat.Component;
@@ -49,7 +50,8 @@ public final class StatusReport {
                 bounty(server, state)));
 
         if (DividerWall.isUp(server)) {
-            player.sendSystemMessage(HeldenText.welcomeWall());
+            player.sendSystemMessage(HeldenText.welcomeWall(
+                    String.format("%.0f", ArenaCenter.x(server))));
         }
     }
 

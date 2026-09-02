@@ -29,7 +29,7 @@ import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 /**
- * Die Trennwand bei X = 0.
+ * Die Trennwand durch die Arenamitte.
  *
  * <p>Minecraft kann pro Dimension nur <em>eine</em> Worldborder, und die ist von der
  * Weltgrenze belegt. Die Wand ist deswegen nachgebaut: hier die Koordinatenpruefung,
@@ -230,17 +230,33 @@ public final class DividerWall {
             return null;
         }
 
+        Double allowed = slide(entity.getX(), ArenaCenter.x(entity.level()), movement.x);
+        return allowed == null ? null : new Vec3(allowed, movement.y, movement.z);
+    }
+
+    /**
+     * Beschneidet einen Schritt entlang X so, dass er die Linie nicht ueberquert.
+     *
+     * <p>Reine Rechnung, damit sie ohne Spielstart pruefbar ist.
+     *
+     * @param x wo die Entitaet steht, in Weltkoordinaten
+     * @param center wo die Arena liegt
+     * @param dx wie weit sie sich bewegen will
+     * @return die erlaubte Bewegung, oder {@code null}, wenn nichts zu beschneiden ist
+     */
+    @Nullable
+    public static Double slide(double x, double center, double dx) {
         // Wer schon in der Linie steht, wird nicht eingesperrt — sonst kaeme er nie heraus.
-        double from = entity.getX();
+        double from = x - center;
         if (Math.abs(from) < MARGIN) {
             return null;
         }
 
         double limit = Math.signum(from) * MARGIN;
-        double to = from + movement.x;
+        double to = from + dx;
         boolean crossing = from < 0 ? to > limit : to < limit;
 
-        return crossing ? new Vec3(limit - from, movement.y, movement.z) : null;
+        return crossing ? limit - from : null;
     }
 
     /**
@@ -474,26 +490,27 @@ public final class DividerWall {
      *
      * <p>Verschickt mit gesetztem Fernflag. Der bequeme Weg,
      * {@code level.sendParticles(...)}, erreicht nur Spieler im Umkreis von zweiunddreissig
-     * Bloecken um die Partikelposition — die Kante liegt aber auf X = 0, und wer fuenfzig
-     * Bloecke daneben steht, bekaeme kein einziges Partikel zu sehen.
+     * Bloecken um die Partikelposition — die Kante liegt aber auf der Linie, und wer
+     * fuenfzig Bloecke daneben steht, bekaeme kein einziges Partikel zu sehen.
      */
     private static void spawnEdge(ServerLevel level, ServerPlayer player) {
+        double x = ArenaCenter.x(level);
         double z = player.getZ();
 
         // Die Schnittkante selbst: hell, dicht, schmal.
         level.sendParticles(player, ParticleTypes.END_ROD, true,
-                0.0, serverEdge, z, EDGE_COUNT, 0.4, EDGE_SPREAD_Y, EDGE_SPREAD_Z, 0.0);
+                x, serverEdge, z, EDGE_COUNT, 0.4, EDGE_SPREAD_Y, EDGE_SPREAD_Z, 0.0);
         level.sendParticles(player, ParticleTypes.ELECTRIC_SPARK, true,
-                0.0, serverEdge, z, EDGE_COUNT / 2, 0.4, EDGE_SPREAD_Y, EDGE_SPREAD_Z, 0.05);
+                x, serverEdge, z, EDGE_COUNT / 2, 0.4, EDGE_SPREAD_Y, EDGE_SPREAD_Z, 0.05);
 
         // Glut, die nach unten wegfaellt: das Stueck Wand, das gerade verloren geht.
         level.sendParticles(player, ParticleTypes.FLAME, true,
-                0.0, serverEdge - EDGE_TRAIL_Y / 2.0, z,
+                x, serverEdge - EDGE_TRAIL_Y / 2.0, z,
                 EDGE_COUNT / 2, 0.4, EDGE_TRAIL_Y / 2.0, EDGE_SPREAD_Z, 0.0);
 
         // Und Rauch, der darueber stehenbleibt, wo eben noch Wand war.
         level.sendParticles(player, ParticleTypes.LARGE_SMOKE, true,
-                0.0, serverEdge + EDGE_TRAIL_Y, z,
+                x, serverEdge + EDGE_TRAIL_Y, z,
                 EDGE_COUNT / 4, 0.5, EDGE_TRAIL_Y, EDGE_SPREAD_Z, 0.01);
     }
 
@@ -523,21 +540,23 @@ public final class DividerWall {
      * Nichts zu erzeugen.
      */
     private static void spawnSteam(ServerLevel level, ServerPlayer player) {
-        double center = player.getZ();
+        double x = ArenaCenter.x(level);
+        double along = player.getZ();
 
         for (int sample = 0; sample < STEAM_SAMPLES; sample++) {
-            double z = center - STEAM_SPREAD_Z
+            double z = along - STEAM_SPREAD_Z
                     + 2.0 * STEAM_SPREAD_Z * sample / (STEAM_SAMPLES - 1.0);
 
-            int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 0, (int) z);
+            int ground = level.getHeight(
+                    Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) x, (int) z);
             if (ground <= level.getMinBuildHeight() || serverEdge > ground + STEAM_TRIGGER) {
                 continue;
             }
 
             level.sendParticles(player, ParticleTypes.CLOUD, true,
-                    0.0, ground + 0.2, z, 5, 0.25, 0.1, 2.0, 0.012);
+                    x, ground + 0.2, z, 5, 0.25, 0.1, 2.0, 0.012);
             level.sendParticles(player, ParticleTypes.CAMPFIRE_COSY_SMOKE, true,
-                    0.0, ground + 0.6, z, 2, 0.25, 0.2, 2.0, 0.004);
+                    x, ground + 0.6, z, 2, 0.25, 0.2, 2.0, 0.004);
         }
     }
 

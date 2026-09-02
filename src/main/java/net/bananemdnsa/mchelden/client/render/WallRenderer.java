@@ -25,7 +25,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 /**
- * Zeichnet die Trennwand bei X = 0.
+ * Zeichnet die Trennwand durch die Arenamitte.
  *
  * <p>Minecraft kann pro Dimension nur eine Worldborder, und die ist von der Weltgrenze
  * belegt. Diese Ebene ist deswegen nachgebaut — nach demselben Verfahren, das Vanilla fuer

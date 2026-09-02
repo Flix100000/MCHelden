@@ -89,7 +89,7 @@
   "mchelden.welcome.playtime": "Spielzeit",
   "mchelden.welcome.bounty": "Bounty",
   "mchelden.welcome.bounty.pending": "wird später ausgelost",
-  "mchelden.welcome.wall": "Die Trennwand steht bei X = 0 — diese Hälfte gehört dir.",
+  "mchelden.welcome.wall": "Die Trennwand steht bei X = %s — diese Hälfte gehört dir.",
   "mchelden.wall.blocked": "Jenseits der Trennwand geht nichts",
   "mchelden.safezone.entered": "Safezone — hier greift niemand an.",
   "mchelden.safezone.left": "Safezone verlassen.",

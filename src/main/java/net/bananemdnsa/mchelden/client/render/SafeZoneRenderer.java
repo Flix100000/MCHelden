@@ -25,7 +25,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 /**
- * Zeichnet die Safezone als runde Wand um 0,0.
+ * Zeichnet die Safezone als runde Wand um die Arenamitte.
  *
  * <p>Dieselbe Machart wie die Trennwand und die Weltgrenze: {@code forcefield.png},
  * additives Mischen, wandernde Textur. Nur laeuft die Flaeche hier im Kreis statt gerade.

@@ -174,8 +174,12 @@ public final class HeldenText {
                 .withStyle(ChatFormatting.DARK_GRAY);
     }
 
-    public static Component welcomeWall() {
-        return Component.translatable("mchelden.welcome.wall").withStyle(ChatFormatting.GRAY);
+    /**
+     * <p>Die Zahl steht im Text, weil die Arena verschiebbar ist: fest eingebaut waere sie
+     * nach dem ersten {@code /helden center} eine Falschauskunft an jeden, der joint.
+     */
+    public static Component welcomeWall(String x) {
+        return Component.translatable("mchelden.welcome.wall", x).withStyle(ChatFormatting.GRAY);
     }
 
     /** Kurz und in der Actionbar: der Hinweis kommt beim Bauen oft. */
