@@ -4,7 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 import net.bananemdnsa.mchelden.MCHelden;
 import net.bananemdnsa.mchelden.client.ClientState;
-import net.bananemdnsa.mchelden.combat.CombatTracker;
+import net.bananemdnsa.mchelden.combat.HitTimer;
 
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -25,7 +25,7 @@ public final class CombatHud {
     public static final ResourceLocation LAYER_ID =
             ResourceLocation.fromNamespaceAndPath(MCHelden.MODID, "combat");
 
-    private static final int SEGMENTS = CombatTracker.MAX_TICKS / CombatTracker.HIT_TICKS;
+    private static final int SEGMENTS = HitTimer.MAX_TICKS / HitTimer.HIT_TICKS;
     private static final int SEGMENT_WIDTH = 15;
     private static final int SEGMENT_HEIGHT = 6;
     private static final int SEGMENT_GAP = 2;
@@ -95,8 +95,8 @@ public final class CombatHud {
 
     private static void drawSegments(GuiGraphics graphics, int left, int top, float partial, float exit) {
         int ticks = ClientState.getCombatTicks();
-        int full = ticks / CombatTracker.HIT_TICKS;
-        float partialSegment = (ticks % CombatTracker.HIT_TICKS) / (float) CombatTracker.HIT_TICKS;
+        int full = ticks / HitTimer.HIT_TICKS;
+        float partialSegment = (ticks % HitTimer.HIT_TICKS) / (float) HitTimer.HIT_TICKS;
 
         float flash = ClientState.combatFlash(partial);
         // Harter Wechsel statt sanftem Wogen: ein weiches Pulsieren uebersieht man,

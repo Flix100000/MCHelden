@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.bananemdnsa.mchelden.combat.CombatTracker;
+import net.bananemdnsa.mchelden.combat.HitTimer;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.Phase;
@@ -53,7 +54,7 @@ public final class PlaytimeTracker {
      * unbegrenzt — zwei Leute, die sich abwechselnd anticken, koennten jemanden beliebig
      * lange online halten, und genau das soll das Zeitlimit verhindern.
      */
-    public static final int MAX_OVERRUN_SECONDS = CombatTracker.MAX_TICKS / 20;
+    public static final int MAX_OVERRUN_SECONDS = HitTimer.MAX_TICKS / 20;
 
     /**
      * Wer beim Ablaufen im Kampf stand, und seit wie vielen Sekunden.
