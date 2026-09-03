@@ -20,6 +20,16 @@ import net.minecraft.server.level.ServerPlayer;
  * gar keinen gespeicherten Kampfzustand geben, den man beim Neustart wiederherstellen müsste.
  */
 public final class CombatTracker {
+    /**
+     * Wie oft der Server den Balken des Clients nachzieht.
+     *
+     * <p>Der Client zaehlt selbst herunter, und seine Ticks laufen in echter Zeit, waehrend
+     * die Serverticks hier unter Last dahinter zurueckfallen. Ohne Korrektur war der Balken
+     * leer, waehrend der Kampf laut Server noch lief — Kisten und Safezone blieben dann
+     * noch Sekunden lang gesperrt, ohne dass etwas davon zu sehen war.
+     */
+    private static final int CORRECTION_GAP = 20;
+
     private static final Map<UUID, Tag> TAGS = new ConcurrentHashMap<>();
 
     /**
@@ -65,7 +75,7 @@ public final class CombatTracker {
         tag.opponent = opponent;
         tag.opponentId = opponentId;
 
-        NetworkHandler.sendCombat(player);
+        NetworkHandler.sendCombatHit(player);
     }
 
     /**
@@ -83,7 +93,9 @@ public final class CombatTracker {
         tag.opponent = opponent;
         tag.opponentId = opponentId;
 
-        NetworkHandler.sendCombat(player);
+        // Wie ein Treffer angesagt: fuer den Client faengt hier ein Combat-Timer an, wo
+        // gerade noch ein Duell-Timer stand.
+        NetworkHandler.sendCombatHit(player);
     }
 
     public static boolean isInCombat(UUID uuid) {
@@ -164,6 +176,22 @@ public final class CombatTracker {
             ItemQuota.reset(entry.getKey());
 
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
+            if (player != null) {
+                NetworkHandler.sendCombat(player);
+            }
+        }
+
+        correct(server);
+    }
+
+    /** Zieht die Balken aller Kaempfenden nach, einmal pro Sekunde. */
+    private static void correct(MinecraftServer server) {
+        if (server.getTickCount() % CORRECTION_GAP != 0) {
+            return;
+        }
+
+        for (UUID uuid : TAGS.keySet()) {
+            ServerPlayer player = server.getPlayerList().getPlayer(uuid);
             if (player != null) {
                 NetworkHandler.sendCombat(player);
             }

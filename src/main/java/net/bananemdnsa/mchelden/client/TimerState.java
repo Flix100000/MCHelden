@@ -7,8 +7,14 @@ import net.minecraft.util.Mth;
  * Ein Timer-Balken auf dem Client: Restzeit, Aufleuchten, Ein- und Ausblenden.
  *
  * <p>Zweimal gebraucht — Combat-Timer und Duell-Timer laufen nach denselben Regeln und
- * unterscheiden sich nur in der Farbe. Der Client zaehlt selbst herunter; der Server
- * schickt nur Aenderungen.
+ * unterscheiden sich nur in der Farbe. Der Client zaehlt selbst herunter, damit der Balken
+ * fluessig laeuft, ohne zwanzig Pakete pro Sekunde.
+ *
+ * <p>Selbst zaehlen heisst aber in echter Zeit zaehlen, waehrend die Serverticks darunter
+ * unter Last zurueckfallen. Der Balken lief dem Server damit voraus und war leer, bevor der
+ * Kampf vorbei war — Kisten und Safezone blieben noch Sekunden laenger gesperrt. Der Server
+ * zieht den Stand deswegen einmal pro Sekunde nach; {@link #accept(int, boolean)} trennt
+ * eine solche Korrektur von einem Treffer.
  */
 public final class TimerState {
     /** Dauer des Aufleuchtens nach einem Treffer. */
@@ -24,26 +30,57 @@ public final class TimerState {
     private int flashTicks;
     private int enterTicks;
     private int exitTicks;
+    /**
+     * Der Stand, der den letzten Countdown-Ton bekommen hat.
+     *
+     * <p>Eine Korrektur schiebt den Stand nach oben, notfalls ueber eine Sekundengrenze
+     * zurueck. Ohne dieses Gedaechtnis kaeme derselbe Ton in den letzten Sekunden zweimal.
+     */
+    private int lastCountdownTick = -1;
 
     /**
      * Uebernimmt den Stand vom Server. 0 bedeutet: vorbei.
      *
-     * <p>Steigt der Wert, war es ein Treffer — der Balken leuchtet dann kurz auf. Faellt er
-     * auf null, ist der Timer geraeumt worden und man darf wieder an Kisten und in die
-     * Safezone. Genau das braucht einen Ton, weil man es nach drei Minuten sonst nicht
-     * mitbekommt.
+     * <p>Ob ein Treffer dahintersteht, sagt der Server statt es aus einem steigenden Wert
+     * zu schliessen: seine Korrekturen steigen ebenfalls, und ein aufleuchtender Balken
+     * ohne Treffer waere eine Falschmeldung. Dasselbe galt bisher schon fuer den Stand, der
+     * beim Verbrauch einer Perle mitkommt.
+     *
+     * <p>Faellt der Wert auf null, ist der Timer geraeumt worden und man darf wieder an
+     * Kisten und in die Safezone. Genau das braucht einen Ton, weil man es nach drei Minuten
+     * sonst nicht mitbekommt.
+     *
+     * @param hit true, wenn dieser Stand von einem Treffer kommt oder einen Timer eroeffnet
      */
-    public void accept(int remainingTicks) {
-        if (remainingTicks > ticks) {
+    public void accept(int remainingTicks, boolean hit) {
+        if (hit) {
             if (ticks == 0) {
                 begin();
             }
             flashTicks = FLASH_TICKS;
+            // Der Timer faengt von vorn an: der Ton der letzten Sekunden auch.
+            lastCountdownTick = -1;
         } else if (remainingTicks == 0 && ticks > 0) {
             // Erzwungenes Raeumen, etwa per Command oder beim Tod.
             end();
+        } else if (remainingTicks > 0 && ticks == 0) {
+            // Der Client war vorausgelaufen und hat schon ausgeblendet, laut Server laeuft
+            // der Kampf aber noch. Still zurueckholen: das Ausblenden abbrechen, ohne einen
+            // zweiten Einstiegston zu spielen.
+            exitTicks = 0;
         }
         ticks = remainingTicks;
+    }
+
+    /**
+     * Soll dieser Stand den Countdown-Ton bekommen?
+     *
+     * <p>Ein Ton pro Sekunde in den letzten Sekunden, und jeder Stand nur einmal.
+     *
+     * @param lastSounded der Stand des letzten Tons, oder -1
+     */
+    static boolean countdownSounds(int ticks, int lastSounded) {
+        return ticks > 0 && ticks <= WARNING_TICKS && ticks % 20 == 0 && ticks != lastSounded;
     }
 
     public void tick() {
@@ -55,9 +92,10 @@ public final class TimerState {
             // wird die Ausblendung genau beim regulaeren Ablaufen verschluckt.
             if (ticks == 0) {
                 end();
-            } else if (ticks <= WARNING_TICKS && ticks % 20 == 0) {
+            } else if (countdownSounds(ticks, lastCountdownTick)) {
                 // Ticken in den letzten Sekunden. Ein Ton erreicht einen auch dann, wenn man
                 // gerade woanders hinschaut — anders als jedes Blinken.
+                lastCountdownTick = ticks;
                 float step = (WARNING_TICKS - ticks) / (float) WARNING_TICKS;
                 ClientState.play(SoundEvents.NOTE_BLOCK_PLING.value(), 0.7f, 1.2f + step * 0.5f);
             }
@@ -93,6 +131,7 @@ public final class TimerState {
         flashTicks = 0;
         enterTicks = 0;
         exitTicks = 0;
+        lastCountdownTick = -1;
     }
 
     public int ticks() {

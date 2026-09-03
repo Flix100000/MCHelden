@@ -65,24 +65,43 @@ public final class NetworkHandler {
     }
 
     /**
-     * Schickt Timer und Kontingente. Nur bei Aenderungen — den Timer zaehlt der Client selbst,
-     * und die Kontingente aendern sich nur, wenn tatsaechlich etwas verbraucht wird.
+     * Schickt Timer und Kontingente, ohne dass der Balken aufleuchtet.
+     *
+     * <p>Fuer alles, was kein Treffer ist: das Ende, ein {@code combat clear}, ein
+     * verbrauchtes Kontingent und die Korrektur einmal pro Sekunde.
      */
     public static void sendCombat(ServerPlayer player) {
+        sendCombat(player, false);
+    }
+
+    /** Derselbe Stand als Treffer: der Balken leuchtet auf, ein ruhender faehrt ein. */
+    public static void sendCombatHit(ServerPlayer player) {
+        sendCombat(player, true);
+    }
+
+    private static void sendCombat(ServerPlayer player, boolean hit) {
         PacketDistributor.sendToPlayer(player, new CombatSyncPayload(
                 CombatTracker.remainingTicks(player.getUUID()),
                 ItemQuota.remaining(player.getUUID(), ItemQuota.Kind.PEARL),
-                ItemQuota.remaining(player.getUUID(), ItemQuota.Kind.COBWEB)));
+                ItemQuota.remaining(player.getUUID(), ItemQuota.Kind.COBWEB),
+                hit));
     }
 
-    /**
-     * Schickt den Duell-Timer und den Gegner. Nur bei Aenderungen — den Timer zaehlt der
-     * Client selbst herunter.
-     */
+    /** Schickt den Duell-Timer und den Gegner, ohne dass der Balken aufleuchtet. */
     public static void sendDuel(ServerPlayer player) {
+        sendDuel(player, false);
+    }
+
+    /** Derselbe Stand als Treffer oder Duellbeginn: der Balken leuchtet auf. */
+    public static void sendDuelHit(ServerPlayer player) {
+        sendDuel(player, true);
+    }
+
+    private static void sendDuel(ServerPlayer player, boolean hit) {
         PacketDistributor.sendToPlayer(player, new DuelSyncPayload(
                 DuelManager.remainingTicks(player.getUUID()),
-                Optional.ofNullable(DuelManager.partnerOf(player.getUUID()))));
+                Optional.ofNullable(DuelManager.partnerOf(player.getUUID())),
+                hit));
     }
 
     /**
@@ -93,7 +112,7 @@ public final class NetworkHandler {
      */
     public static void sendDuelShowcase(ServerPlayer player, @Nullable UUID opponent, int ticks) {
         PacketDistributor.sendToPlayer(player,
-                new DuelSyncPayload(ticks, Optional.ofNullable(opponent)));
+                new DuelSyncPayload(ticks, Optional.ofNullable(opponent), true));
     }
 
     /** Startet beim Empfänger die Verlust-Animation. Beim Respawn schicken, nicht beim Tod. */

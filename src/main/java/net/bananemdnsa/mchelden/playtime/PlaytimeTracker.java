@@ -107,6 +107,21 @@ public final class PlaytimeTracker {
     private static final Map<UUID, Long> LAST_CHARGED = new ConcurrentHashMap<>();
 
     /**
+     * Wie viele Abrechnungen zwischen zwei Korrekturen der Anzeige liegen.
+     *
+     * <p>Die Uhr oben rechts zaehlt selbst herunter und bekommt sonst nur bei Aenderungen
+     * einen Stand vom Server. Beide messen jetzt echte Zeit, laufen also zusammen — aber
+     * ein Client, der selbst Ticks verliert, liefe ueber eine Stunde genauso auseinander
+     * wie vorher der Server, nur in die andere Richtung: der Kick kaeme vor der Null. Eine
+     * genaue Zahl alle dreissig Sekunden deckelt das, und weil sie zur Sekunde des Servers
+     * springt, ist die Korrektur nicht zu sehen.
+     */
+    private static final int SYNC_GAP = 30;
+
+    /** Zaehlt die Abrechnungen bis zur naechsten Korrektur. */
+    private static int syncCounter;
+
+    /**
      * Wie oft nachgerechnet wird: einmal pro Sekunde genuegt, nicht zwanzigmal.
      *
      * <p>Nur der Takt, nicht das Mass — <i>wie viel</i> abgerechnet wird, sagt die Uhr.
@@ -265,16 +280,21 @@ public final class PlaytimeTracker {
         }
         tickCounter = 0;
 
+        boolean correct = ++syncCounter >= SYNC_GAP;
+        if (correct) {
+            syncCounter = 0;
+        }
+
         long today = playDay(LocalDateTime.now());
         PlayerStateStore store = PlayerStateStore.get(server);
 
         for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
-            tickPlayer(server, store, player, today);
+            tickPlayer(server, store, player, today, correct);
         }
     }
 
     private static void tickPlayer(MinecraftServer server, PlayerStateStore store,
-                                   ServerPlayer player, long today) {
+                                   ServerPlayer player, long today, boolean correct) {
         PlayerState state = store.getOrCreate(player.getUUID());
 
         if (rollOver(store, state, today)) {
@@ -294,10 +314,26 @@ public final class PlaytimeTracker {
         }
 
         int elapsed = charge(player);
-        if (elapsed <= 0) {
+        if (elapsed > 0 && !spend(server, store, state, player, elapsed)) {
             return;
         }
 
+        // Nach dem Abrechnen, nicht davor: sonst bekaeme der Client die Sekunde, die gerade
+        // verbraucht wird, noch einmal geschenkt und laege dauerhaft eine Sekunde vor dem
+        // Server — der Kick kaeme dann bei 0:01.
+        if (correct) {
+            NetworkHandler.syncTo(player);
+        }
+    }
+
+    /**
+     * Schreibt die verbrauchten Sekunden fest, warnt an den Schwellen und wirft notfalls
+     * hinaus.
+     *
+     * @return false, wenn der Spieler damit draussen ist
+     */
+    private static boolean spend(MinecraftServer server, PlayerStateStore store,
+                                 PlayerState state, ServerPlayer player, int elapsed) {
         int before = remainingSeconds(state.getPlaytimeUsedSeconds());
         state.setPlaytimeUsedSeconds(state.getPlaytimeUsedSeconds() + elapsed);
         store.setDirty();
@@ -305,9 +341,7 @@ public final class PlaytimeTracker {
 
         warn(player, before, after);
 
-        if (after <= 0) {
-            kickOrDefer(server, player, elapsed);
-        }
+        return after > 0 || !kickOrDefer(server, player, elapsed);
     }
 
     /**
@@ -372,8 +406,10 @@ public final class PlaytimeTracker {
      *
      * <p>Sofortiger Kick waere ein legaler Combat-Log. Maximal drei Minuten Ueberzug, und
      * man muss dafuer in einem echten Kampf stehen.
+     *
+     * @return true, wenn tatsaechlich gekickt wurde
      */
-    private static void kickOrDefer(MinecraftServer server, ServerPlayer player, int elapsed) {
+    private static boolean kickOrDefer(MinecraftServer server, ServerPlayer player, int elapsed) {
         UUID uuid = player.getUUID();
 
         if (CombatTracker.isInCombat(uuid)) {
@@ -386,12 +422,13 @@ public final class PlaytimeTracker {
             // Danach faellt der Aufschub weg, auch wenn der Kampf weitergeht: jeder Treffer
             // fuellt den Combat-Timer wieder auf, der Kampf koennte also nie enden.
             if (overrun < MAX_OVERRUN_SECONDS) {
-                return;
+                return false;
             }
         }
 
         OVERRUN.remove(uuid);
         player.connection.disconnect(HeldenText.playtimeKick());
+        return true;
     }
 
     /**

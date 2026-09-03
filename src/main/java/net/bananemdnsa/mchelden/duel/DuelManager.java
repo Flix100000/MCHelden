@@ -40,6 +40,12 @@ public final class DuelManager {
     /** In welchem Umkreis der Alleingang nach etwas zum Leuchten sucht. */
     private static final double SHOWCASE_RADIUS = 32.0;
 
+    /**
+     * Wie oft der Server den Balken des Clients nachzieht. Aus demselben Grund wie beim
+     * Combat-Timer: siehe {@code CombatTracker.CORRECTION_GAP}.
+     */
+    private static final int CORRECTION_GAP = 20;
+
     private static final DuelRequests REQUESTS = new DuelRequests();
     private static final DuelRegistry DUELS = new DuelRegistry();
 
@@ -256,7 +262,7 @@ public final class DuelManager {
     private static void announceStart(ServerPlayer player, String opponent) {
         player.sendSystemMessage(HeldenText.duelHighlight("mchelden.duel.start", opponent));
         player.playNotifySound(SoundEvents.NOTE_BLOCK_BASEDRUM.value(), SoundSource.MASTER, 0.9f, 0.8f);
-        NetworkHandler.sendDuel(player);
+        NetworkHandler.sendDuelHit(player);
     }
 
     /**
@@ -312,8 +318,8 @@ public final class DuelManager {
     /** Ein Treffer zwischen den beiden Duellanten. Verlaengert den geteilten Timer. */
     public static void onHit(ServerPlayer attacker, ServerPlayer victim) {
         DUELS.hit(attacker.getUUID());
-        NetworkHandler.sendDuel(attacker);
-        NetworkHandler.sendDuel(victim);
+        NetworkHandler.sendDuelHit(attacker);
+        NetworkHandler.sendDuelHit(victim);
     }
 
     /**
@@ -479,6 +485,24 @@ public final class DuelManager {
         for (DuelRegistry.Duel duel : DUELS.tick()) {
             expire(server, duel.first(), duel.second());
             expire(server, duel.second(), duel.first());
+        }
+
+        correct(server);
+    }
+
+    /** Zieht die Balken aller Duellanten nach, einmal pro Sekunde. */
+    private static void correct(MinecraftServer server) {
+        if (server.getTickCount() % CORRECTION_GAP != 0) {
+            return;
+        }
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            // Nur wer laut Register wirklich duelliert: die Anzeige aus dem Alleingang
+            // steht hinter keinem Duell und laeuft allein auf dem Client ab. Eine
+            // Korrektur wuerde sie sofort abraeumen.
+            if (remainingTicks(player.getUUID()) > 0) {
+                NetworkHandler.sendDuel(player);
+            }
         }
     }
 

@@ -281,14 +281,15 @@ public final class ClientState {
     /**
      * Uebernimmt den Stand vom Server. 0 bedeutet: Kampf vorbei.
      *
-     * <p>Steigt der Wert, war es ein Treffer — der Balken leuchtet dann kurz auf. Faellt er
-     * auf null, ist der Kampf ausgelaufen und man darf wieder an Kisten und in die Safezone.
-     * Genau das braucht einen Ton, weil man es nach drei Minuten sonst nicht mitbekommt.
+     * <p>Ob ein Treffer dahintersteht, sagt das Paket — der Balken leuchtet dann kurz auf.
+     * Faellt der Wert auf null, ist der Kampf ausgelaufen und man darf wieder an Kisten und
+     * in die Safezone. Genau das braucht einen Ton, weil man es nach drei Minuten sonst
+     * nicht mitbekommt.
      */
     public static void onCombat(net.bananemdnsa.mchelden.network.CombatSyncPayload payload) {
         pearlsLeft = payload.pearlsLeft();
         cobwebsLeft = payload.cobwebsLeft();
-        COMBAT.accept(payload.remainingTicks());
+        COMBAT.accept(payload.remainingTicks(), payload.hit());
         updateSafeZoneLock();
     }
 
@@ -300,7 +301,7 @@ public final class ClientState {
      */
     public static void onDuel(net.bananemdnsa.mchelden.network.DuelSyncPayload payload) {
         duelOpponentId = payload.opponent().orElse(null);
-        DUEL.accept(payload.remainingTicks());
+        DUEL.accept(payload.remainingTicks(), payload.hit());
         updateSafeZoneLock();
     }
 

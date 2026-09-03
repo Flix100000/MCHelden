@@ -21,8 +21,10 @@ import net.minecraft.resources.ResourceLocation;
  *
  * @param remainingTicks verbleibende Ticks, 0 bedeutet: kein Duell
  * @param opponent der Duellgegner, leer ausserhalb eines Duells
+ * @param hit steht ein Treffer oder ein Duellbeginn dahinter? Nur dann leuchtet der Balken
+ *            auf — die Korrektur einmal pro Sekunde schiebt den Wert ebenfalls nach oben
  */
-public record DuelSyncPayload(int remainingTicks, Optional<UUID> opponent)
+public record DuelSyncPayload(int remainingTicks, Optional<UUID> opponent, boolean hit)
         implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<DuelSyncPayload> TYPE =
@@ -32,6 +34,7 @@ public record DuelSyncPayload(int remainingTicks, Optional<UUID> opponent)
             StreamCodec.composite(
                     ByteBufCodecs.VAR_INT, DuelSyncPayload::remainingTicks,
                     ByteBufCodecs.optional(UUIDUtil.STREAM_CODEC), DuelSyncPayload::opponent,
+                    ByteBufCodecs.BOOL, DuelSyncPayload::hit,
                     DuelSyncPayload::new);
 
     @Override
