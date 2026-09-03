@@ -214,14 +214,30 @@ public final class NetworkHandler {
     }
 
     private static void handleWallDropOnClient(WallDropPayload payload, IPayloadContext context) {
-        context.enqueueWork(() ->
-                net.bananemdnsa.mchelden.client.ClientState.onWallDrop(payload.dropping()));
+        context.enqueueWork(() -> net.bananemdnsa.mchelden.client.ClientState.onWallDrop(
+                payload.dropping(), payload.elapsedTicks()));
     }
 
     /** Laesst die Trennwand bei allen aufbrechen, oder bricht den Vorgang ab. */
     public static void sendWallDrop(MinecraftServer server, boolean dropping) {
+        sendWallDrop(server, dropping, 0);
+    }
+
+    /**
+     * Sagt allen, wie lange das Absinken auf dem Server schon laeuft.
+     *
+     * <p>Der Client zaehlt es selbst mit, damit die Kante fluessig sinkt — aber in echter
+     * Zeit, waehrend die Serverticks darunter unter Last zurueckfallen. Ohne diese
+     * Korrektur ist die Wand auf dem Client eher unten als auf dem Server, und man rennt
+     * in eine Wand, die nicht mehr zu sehen ist.
+     */
+    public static void sendWallDropProgress(MinecraftServer server, int elapsedTicks) {
+        sendWallDrop(server, true, elapsedTicks);
+    }
+
+    private static void sendWallDrop(MinecraftServer server, boolean dropping, int elapsedTicks) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            PacketDistributor.sendToPlayer(player, new WallDropPayload(dropping));
+            PacketDistributor.sendToPlayer(player, new WallDropPayload(dropping, elapsedTicks));
         }
     }
 

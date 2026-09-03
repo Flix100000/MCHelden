@@ -22,7 +22,8 @@ import net.minecraft.resources.ResourceLocation;
  * <p>Die Geschwindigkeit steht nicht drin — die kennt der Client aus {@code DividerWall},
  * damit Bruchkante und Funken nicht auseinanderlaufen koennen.
  */
-public record WallDropPayload(boolean dropping) implements CustomPacketPayload {
+public record WallDropPayload(boolean dropping, int elapsedTicks)
+        implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<WallDropPayload> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(MCHelden.MODID, "wall_drop"));
@@ -30,6 +31,7 @@ public record WallDropPayload(boolean dropping) implements CustomPacketPayload {
     public static final StreamCodec<RegistryFriendlyByteBuf, WallDropPayload> STREAM_CODEC =
             StreamCodec.composite(
                     ByteBufCodecs.BOOL, WallDropPayload::dropping,
+                    ByteBufCodecs.VAR_INT, WallDropPayload::elapsedTicks,
                     WallDropPayload::new);
 
     @Override

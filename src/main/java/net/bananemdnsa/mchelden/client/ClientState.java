@@ -213,10 +213,18 @@ public final class ClientState {
         playtimeRemainingSeconds--;
     }
 
-    /** Die Wand beginnt aufzubrechen — oder der Vorgang wird abgebrochen. */
-    public static void onWallDrop(boolean dropping) {
-        wallDropTicks = dropping ? 0 : -1;
-        DividerWall.setClientEdge(Double.MAX_VALUE);
+    /**
+     * Die Wand beginnt aufzubrechen, ist ein Stueck weiter, oder der Vorgang wird
+     * abgebrochen.
+     *
+     * <p>Der Stand kommt vom Server statt hier nur bei null anzufangen: gezaehlt wird
+     * weiter selbst, damit die Kante fluessig sinkt, aber Clientticks laufen in echter Zeit
+     * und die Serverticks darunter fallen unter Last zurueck. Ohne die Korrektur waere die
+     * Wand hier eher unten als dort — und die Kollision haengt an derselben Zahl.
+     */
+    public static void onWallDrop(boolean dropping, int elapsedTicks) {
+        wallDropTicks = dropping ? elapsedTicks : -1;
+        DividerWall.setClientEdge(wallEdge(0f));
     }
 
     /**

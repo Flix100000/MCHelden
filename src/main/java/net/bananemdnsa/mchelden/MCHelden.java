@@ -49,7 +49,7 @@ import org.slf4j.Logger;
 public class MCHelden {
     public static final String MODID = "mchelden";
     /** Wird bei jeder Aenderung an einem Payload hochgezaehlt, damit Client und Server bei einem Mismatch die Verbindung ablehnen statt stillschweigend zu desyncen. */
-    public static final String NETWORK_VERSION = "3";
+    public static final String NETWORK_VERSION = "4";
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public MCHelden(IEventBus modEventBus, ModContainer modContainer) {

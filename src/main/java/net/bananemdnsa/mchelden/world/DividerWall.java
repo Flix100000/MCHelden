@@ -63,8 +63,10 @@ public final class DividerWall {
      *
      * <p>{@link Double#MAX_VALUE} heisst: sie sinkt nicht, die Wand reicht bis oben.
      *
-     * <p>Getrennt je Seite, aus demselben Grund wie {@link #clientWallUp}. Beide rechnen
-     * mit {@link #edgeAt}, koennen also nicht auseinanderlaufen.
+     * <p>Getrennt je Seite, aus demselben Grund wie {@link #clientWallUp}. Beide rechnen mit
+     * {@link #edgeAt} — dieselbe Formel, aber an zwei Uhren: der Client zaehlt in echter
+     * Zeit, dieser Tick in Serverticks. Damit die Kanten trotzdem zusammenbleiben, schickt
+     * {@link #tickDrop} den Stand einmal pro Sekunde mit.
      *
      * <p><b>Die Kollision liest denselben Wert wie der Renderer.</b> Sonst stuende man vor
      * einer sichtbar abgesunkenen Wand, durch die man trotzdem nicht hindurchkommt — und
@@ -122,6 +124,9 @@ public final class DividerWall {
 
     /** Wie oft es waehrend des Absinkens grollt. */
     private static final int RUMBLE_GAP = 14;
+
+    /** Wie oft der Server den Stand des Absinkens beim Client nachzieht. */
+    private static final int PROGRESS_GAP = 20;
 
     /**
      * Der Dampf am Boden, dort wo die Wand hindurchgegangen ist.
@@ -462,6 +467,12 @@ public final class DividerWall {
      */
     public static void tickDrop(MinecraftServer server, int elapsedTicks) {
         serverEdge = edgeAt(elapsedTicks);
+
+        // Einmal pro Sekunde den Stand nachziehen: der Client zaehlt selbst mit, aber an
+        // seiner eigenen Uhr. Zwoelf Pakete fuer den ganzen Vorgang.
+        if (elapsedTicks % PROGRESS_GAP == 0) {
+            NetworkHandler.sendWallDropProgress(server, elapsedTicks);
+        }
 
         // Der Dampf laeuft ueber den eigenen Ticker weiter, damit er das Ende des
         // Countdowns ueberdauert.
