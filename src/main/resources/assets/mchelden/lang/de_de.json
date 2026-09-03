@@ -164,5 +164,20 @@
   "mchelden.command.duel.none": "%s hat kein Duell",
   "mchelden.command.info.duel": "Duell",
   "mchelden.command.info.duel.none": "keins",
-  "mchelden.command.info.duel.value": "%s · %s"
+  "mchelden.command.info.duel.value": "%s · %s",
+  "mchelden.event.notimelimit": "Kein Zeitlimit",
+  "mchelden.event.subtitle.notimelimit": "Die Spielzeit zählt jetzt nicht mit",
+  "mchelden.event.subtitle.notimelimit.end": "Die Spielzeit zählt wieder mit",
+  "mchelden.event.bar": "Event · %s · %s",
+  "mchelden.event.start.broadcast": "Event gestartet: %s — %s",
+  "mchelden.event.replaced": "Das laufende Event wurde ersetzt",
+  "mchelden.event.warning": "%s endet in %s Sekunden",
+  "mchelden.event.end.title": "Event vorbei",
+  "mchelden.event.end.broadcast": "Event beendet: %s",
+  "mchelden.event.end.stopped": "Event abgebrochen: %s",
+  "mchelden.event.end.phase": "Event beendet: %s gilt in dieser Phase nicht",
+  "mchelden.event.info.running": "Event: %s · %s übrig",
+  "mchelden.event.none": "Es läuft kein Event",
+  "mchelden.event.deny.phase": "%s lässt sich nur in der Phase %s starten",
+  "mchelden.event.deny.unknown": "Unbekanntes Event. Möglich sind: %s"
 }

@@ -14,6 +14,9 @@ public class GameState extends SavedData {
     private static final String KEY_BORDER_SET = "borderSet";
     private static final String KEY_CENTER_X = "centerX";
     private static final String KEY_CENTER_Z = "centerZ";
+    private static final String KEY_EVENT_ID = "eventId";
+    private static final String KEY_EVENT_STARTED = "eventStartedAt";
+    private static final String KEY_EVENT_ENDS = "eventEndsAt";
 
     private static final Factory<GameState> FACTORY =
             new Factory<>(GameState::new, GameState::load);
@@ -54,6 +57,25 @@ public class GameState extends SavedData {
     private double centerX;
     private double centerZ;
 
+    /**
+     * Das laufende Event: Kennung, Start und Ende.
+     *
+     * <p>Leere Kennung heisst "keins". Gespeichert, weil ein Event einen Serverneustart
+     * ueberstehen muss — sonst frisst ein Neustart um 20:30 ein Event, das bis 21:00 laufen
+     * sollte.
+     *
+     * <p>Gerechnet in Millisekunden der <b>Wanduhr</b>, nicht in Serverticks: waehrend der
+     * Downtime spielt ohnehin niemand, und ein Event soll dann enden, wann es enden sollte.
+     * Beide Zeitpunkte werden gebraucht — der Balken braucht die Gesamtdauer, sonst wuesste
+     * er nicht, wie voll voll ist.
+     *
+     * <p>Die Kennung steht hier als Zeichenkette und nicht als {@code EventType}, damit der
+     * Spielzustand nichts vom Paket {@code event} wissen muss. Aufgeloest wird sie im
+     * {@code EventManager}.
+     */
+    private String eventId = "";
+    private long eventStartedAt;
+    private long eventEndsAt;
 
     public static GameState get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(FACTORY, NAME);
@@ -100,9 +122,34 @@ public class GameState extends SavedData {
         setDirty();
     }
 
+    /** Die Kennung des laufenden Events, oder leer. */
+    public String getEventId() {
+        return eventId;
+    }
+
+    public long getEventStartedAt() {
+        return eventStartedAt;
+    }
+
+    public long getEventEndsAt() {
+        return eventEndsAt;
+    }
+
+    public void setEvent(String eventId, long startedAt, long endsAt) {
+        this.eventId = eventId;
+        this.eventStartedAt = startedAt;
+        this.eventEndsAt = endsAt;
+        setDirty();
+    }
+
+    public void clearEvent() {
+        setEvent("", 0L, 0L);
+    }
+
     public void reset() {
         setPhase(Phase.AUFBAU);
         setWallUp(true);
+        clearEvent();
         // Die Arenamitte bleibt stehen — aus demselben Grund wie die Bordergroesse unten:
         // wo die Arena liegt, ist Weltaufbau und nicht der Zustand einer Runde. Zurueck in
         // die Weltmitte holt sie "/helden center reset".
@@ -118,6 +165,9 @@ public class GameState extends SavedData {
         tag.putBoolean(KEY_BORDER_SET, borderSet);
         tag.putDouble(KEY_CENTER_X, centerX);
         tag.putDouble(KEY_CENTER_Z, centerZ);
+        tag.putString(KEY_EVENT_ID, eventId);
+        tag.putLong(KEY_EVENT_STARTED, eventStartedAt);
+        tag.putLong(KEY_EVENT_ENDS, eventEndsAt);
         return tag;
     }
 
@@ -132,6 +182,10 @@ public class GameState extends SavedData {
         // Ohne Eintrag die Weltmitte: eine Welt von vor dieser Aenderung liegt auf 0,0.
         state.centerX = tag.getDouble(KEY_CENTER_X);
         state.centerZ = tag.getDouble(KEY_CENTER_Z);
+        // Ohne Eintrag: kein Event. `getString` liefert dafuer die leere Zeichenkette.
+        state.eventId = tag.getString(KEY_EVENT_ID);
+        state.eventStartedAt = tag.getLong(KEY_EVENT_STARTED);
+        state.eventEndsAt = tag.getLong(KEY_EVENT_ENDS);
         return state;
     }
 }

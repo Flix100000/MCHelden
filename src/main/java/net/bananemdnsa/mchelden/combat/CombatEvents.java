@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.duel.DuelManager;
+import net.bananemdnsa.mchelden.event.EventManager;
 import net.bananemdnsa.mchelden.hearts.HeartManager;
 import net.bananemdnsa.mchelden.phase.PhaseManager;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
@@ -131,6 +132,7 @@ public final class CombatEvents {
         DuelManager.tick(event.getServer());
         PhaseManager.tick(event.getServer());
         FinalWarBar.tick(event.getServer());
+        EventManager.tick(event.getServer());
         SafeZone.tickBurst(event.getServer());
         BorderStorm.tick(event.getServer());
         PlaytimeTracker.tick(event.getServer());

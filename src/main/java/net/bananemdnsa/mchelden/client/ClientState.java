@@ -46,6 +46,13 @@ public final class ClientState {
      * Combat-Timer. Ein Paket pro Sekunde und Spieler waere fuer eine Anzeige zu viel.
      */
     private static int playtimeRemainingSeconds = PlaytimeTracker.NO_LIMIT;
+    /**
+     * Haelt ein laufendes Zeit-Event die Uhr gerade an?
+     *
+     * <p>Dann bleibt die Zahl stehen, statt weiter heruntergezaehlt zu werden — der Server
+     * verbraucht ja auch keine Sekunde.
+     */
+    private static boolean playtimePaused;
     /** Der Client tickt zwanzigmal pro Sekunde, die Uhr laeuft aber in Sekunden. */
     private static int playtimeTicks;
     private static Phase phase = Phase.AUFBAU;
@@ -131,7 +138,8 @@ public final class ClientState {
         bountyTargetId = payload.bounty().targetId().orElse(null);
         bountyResolved = payload.bounty().resolved();
         bountyTargetEliminated = payload.bounty().targetEliminated();
-        playtimeRemainingSeconds = payload.playtimeRemainingSeconds();
+        playtimeRemainingSeconds = payload.playtime().remainingSeconds();
+        playtimePaused = payload.playtime().paused();
         playtimeTicks = 0;
         phase = Phase.byId(payload.phaseId());
         wallUp = payload.wallUp();
@@ -194,7 +202,10 @@ public final class ClientState {
 
     /** Laesst die Uhr oben rechts laufen, ohne dass der Server jede Sekunde etwas schickt. */
     private static void tickPlaytime() {
-        if (playtimeRemainingSeconds <= 0 || ++playtimeTicks < 20) {
+        // Haelt ein Event die Uhr an, verbraucht der Server keine Sekunde — der Client darf
+        // dann auch nicht lokal weiterzaehlen, sonst spraenge die Zahl beim naechsten Sync
+        // wieder nach oben.
+        if (playtimePaused || playtimeRemainingSeconds <= 0 || ++playtimeTicks < 20) {
             return;
         }
 
@@ -486,6 +497,7 @@ public final class ClientState {
         bountyGoneTicks = 0;
         bountyCloseTicks = 0;
         playtimeRemainingSeconds = PlaytimeTracker.NO_LIMIT;
+        playtimePaused = false;
         playtimeTicks = 0;
         phase = Phase.AUFBAU;
         wallUp = true;
@@ -562,6 +574,11 @@ public final class ClientState {
 
     public static int getPlaytimeRemainingSeconds() {
         return playtimeRemainingSeconds;
+    }
+
+    /** Steht die Uhr gerade still, weil ein Zeit-Event laeuft? */
+    public static boolean isPlaytimePaused() {
+        return playtimePaused;
     }
 
     public static boolean isWallUp() {

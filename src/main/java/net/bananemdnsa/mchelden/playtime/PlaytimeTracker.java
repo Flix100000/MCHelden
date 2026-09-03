@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import net.bananemdnsa.mchelden.combat.CombatTracker;
 import net.bananemdnsa.mchelden.combat.HitTimer;
+import net.bananemdnsa.mchelden.event.EventManager;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.state.GameState;
 import net.bananemdnsa.mchelden.state.Phase;
@@ -30,6 +31,11 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
  * Phase. Dadurch funktioniert die Gegenrichtung von selbst — {@code phase set aufbau}
  * bringt das Limit zurueck —, und es kann keinen Zustand geben, in dem Phase und Limit
  * auseinanderliegen.
+ *
+ * <p>Dieselbe Ueberlegung traegt das Event {@code notimelimit}: auch dort wird nichts
+ * geschaltet, sondern gefragt. Nach dem Eventende gilt das Limit im naechsten Tick wieder,
+ * ohne dass irgendwer es zurueckstellen muesste — und auch die Kampf-Kulanz weiter unten
+ * faengt dann neu an, weil ein angefangener Ueberzug eine Zeit ohne Limit nicht uebersteht.
  */
 public final class PlaytimeTracker {
     /**
@@ -103,13 +109,14 @@ public final class PlaytimeTracker {
 
     /** Was die Anzeige zeigen soll, oder {@link #NO_LIMIT}. */
     public static int displayRemaining(MinecraftServer server, ServerPlayer player, PlayerState state) {
-        return isLimited(server, player)
+        return isTracked(server, player)
                 ? remainingSeconds(state.getPlaytimeUsedSeconds())
                 : NO_LIMIT;
     }
 
     /**
-     * Gilt das Limit fuer diesen Spieler?
+     * Gehoert dieser Spieler ueberhaupt zum Kontingent — unabhaengig davon, ob ein laufendes
+     * Event die Uhr gerade anhaelt?
      *
      * <p>Auf einem echten Server fuer alle, Ops eingeschlossen — eine Stunde am Tag ist
      * eine Spielregel, keine Frage des Ranges.
@@ -119,11 +126,42 @@ public final class PlaytimeTracker {
      * nicht mehr in seine eigene Welt. Zum Ansehen laesst sich das Limit dort mit
      * {@code /helden debug playtime} trotzdem einschalten.
      */
-    public static boolean isLimited(MinecraftServer server, ServerPlayer player) {
+    private static boolean isTracked(MinecraftServer server, ServerPlayer player) {
         if (GameState.get(server).getPhase() != Phase.AUFBAU) {
             return false;
         }
+
         return FORCED.contains(player.getUUID()) || !server.isSingleplayer();
+    }
+
+    /**
+     * Gilt das Limit fuer diesen Spieler gerade?
+     *
+     * <p>Auf einem echten Server fuer alle, Ops eingeschlossen — eine Stunde am Tag ist
+     * eine Spielregel, keine Frage des Ranges.
+     *
+     * <p><b>Einzelspieler-Welten sind ausgenommen.</b> Dort gibt es keine Konsole, ueber
+     * die jemand nachhelfen koennte: wer sich einmal aussperrt, kaeme bis vier Uhr morgens
+     * nicht mehr in seine eigene Welt. Zum Ansehen laesst sich das Limit dort mit
+     * {@code /helden debug playtime} trotzdem einschalten.
+     *
+     * <p>Ein laufendes Zeit-Event haelt die Uhr zusaetzlich an. Aus dieser einen Antwort
+     * faellt alles Weitere von selbst: keine Sekunde wird verbraucht, niemand wird gekickt,
+     * und wer sein Kontingent heute schon leer hat, kommt beim Join trotzdem herein — ohne
+     * das waere ein Abendevent fuer die Haelfte des Servers wertlos.
+     */
+    public static boolean isLimited(MinecraftServer server, ServerPlayer player) {
+        return isTracked(server, player) && !EventManager.suspendsPlaytime(server);
+    }
+
+    /**
+     * Steht die Uhr gerade still, weil ein Event sie anhaelt?
+     *
+     * <p>Fuer das HUD: es soll die Zahl weiter zeigen, nur grau und ohne sich zu bewegen,
+     * statt ganz zu verschwinden.
+     */
+    public static boolean isPaused(MinecraftServer server, ServerPlayer player) {
+        return isTracked(server, player) && EventManager.suspendsPlaytime(server);
     }
 
     /**
@@ -181,6 +219,10 @@ public final class PlaytimeTracker {
         }
 
         if (!isLimited(server, player)) {
+            // Der Ueberzug gehoert zum geltenden Limit. Bliebe er ueber ein Event stehen,
+            // floege jemand mit fast aufgebrauchter Kulanz eine Sekunde nach dem Eventende
+            // wortlos aus dem Kampf — genau der Fall, den die Kulanz verhindern soll.
+            OVERRUN.remove(player.getUUID());
             return;
         }
 

@@ -20,6 +20,10 @@ import net.minecraft.world.item.Items;
  * Limit" — das deckt Ops und alle Phasen ausser Aufbau mit derselben Zahl ab, ohne ein
  * zusaetzliches Feld.
  *
+ * <p>Ein laufendes Zeit-Event ist ein dritter Zustand: die Zahl bleibt stehen, grau und
+ * reglos, statt zu verschwinden oder weiterzulaufen. Eine verschwundene Uhr saehe nach
+ * einem Fehler aus, eine weiterlaufende waere eine Luege — die Uhr steht ja tatsaechlich.
+ *
  * <p>Die Farbe traegt die Dringlichkeit: die Warnungen selbst kommen als Chat-Zeilen, und
  * eine Zeile im Chat ist weg, sobald darunter etwas anderes steht. Die Uhr bleibt.
  */
@@ -33,6 +37,8 @@ public final class PlaytimeHud {
     private static final int NORMAL = 0xFFFFFFFF;
     private static final int LOW = 0xFFE0A030;
     private static final int CRITICAL = 0xFFE05555;
+    /** Die Dringlichkeits-Farben bedeuten nichts, waehrend die Uhr steht. */
+    private static final int PAUSED = 0xFFA0A0A0;
 
     /** Ab hier wird die Uhr bernstein, ab der zweiten Schwelle rot. */
     private static final int LOW_SECONDS = 600;
@@ -48,18 +54,35 @@ public final class PlaytimeHud {
         }
 
         Font font = minecraft.font;
+        boolean paused = ClientState.isPlaytimePaused();
         int seconds = ClientState.getPlaytimeRemainingSeconds();
         String text = format(seconds);
         int width = font.width(text);
 
         int right = HudLayout.quotaRight(graphics);
         int top = HudLayout.quotaTop(graphics);
+        int iconX = right - width - GAP - ICON;
 
         RenderSystem.enableBlend();
         graphics.drawString(font, text, right - width, top + (ICON - font.lineHeight) / 2,
-                colorFor(seconds), true);
-        graphics.renderItem(new ItemStack(Items.CLOCK), right - width - GAP - ICON, top);
+                paused ? PAUSED : colorFor(seconds), true);
+        if (paused) {
+            drawPauseIcon(graphics, iconX, top);
+        } else {
+            graphics.renderItem(new ItemStack(Items.CLOCK), iconX, top);
+        }
         RenderSystem.disableBlend();
+    }
+
+    /**
+     * Zwei senkrechte Balken statt des Uhr-Items — Minecrafts Font hat kein verlaessliches
+     * Pause-Symbol, deswegen wird gemalt statt geschrieben. Im selben 16x16-Kasten wie sonst
+     * das Item, damit sich am Layout zwischen laufendem und pausiertem Zustand nichts
+     * verschiebt.
+     */
+    private static void drawPauseIcon(GuiGraphics graphics, int iconX, int top) {
+        graphics.fill(iconX + 4, top + 3, iconX + 7, top + 13, PAUSED);
+        graphics.fill(iconX + 10, top + 3, iconX + 13, top + 13, PAUSED);
     }
 
     private static int colorFor(int seconds) {

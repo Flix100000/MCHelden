@@ -115,7 +115,9 @@ public final class NetworkHandler {
         PacketDistributor.sendToPlayer(player, new StateSyncPayload(
                 state.getHearts(),
                 bountyView(server, store, state),
-                PlaytimeTracker.displayRemaining(server, player, state),
+                new PlaytimeView(
+                        PlaytimeTracker.displayRemaining(server, player, state),
+                        PlaytimeTracker.isPaused(server, player)),
                 GameState.get(server).getPhase().getId(),
                 GameState.get(server).isWallUp(),
                 new ArenaView(GameState.get(server).getCenterX(),

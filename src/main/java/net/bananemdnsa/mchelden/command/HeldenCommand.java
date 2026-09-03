@@ -20,6 +20,8 @@ import net.bananemdnsa.mchelden.bounty.BountyManager;
 import net.bananemdnsa.mchelden.combat.CombatTracker;
 import net.bananemdnsa.mchelden.combat.ItemQuota;
 import net.bananemdnsa.mchelden.duel.DuelManager;
+import net.bananemdnsa.mchelden.event.EventManager;
+import net.bananemdnsa.mchelden.event.EventType;
 import net.bananemdnsa.mchelden.hearts.Elimination;
 import net.bananemdnsa.mchelden.phase.PhaseManager;
 import net.bananemdnsa.mchelden.playtime.PlaytimeTracker;
@@ -179,6 +181,27 @@ public final class HeldenCommand {
                                         .executes(context -> phaseSet(
                                                 context.getSource(),
                                                 StringArgumentType.getString(context, "phase"))))))
+                .then(Commands.literal("event")
+                        .requires(HeldenPermission.branch("event"))
+                        // Literale vor Argumenten: `stop` und `info` landen verlaesslich
+                        // hier und nicht im Eventnamen. EventType.RESERVED haelt fest,
+                        // dass kein Event so heissen darf.
+                        .then(Commands.literal("stop")
+                                .requires(HeldenPermission.EVENT_RUN::granted)
+                                .executes(context -> eventStop(context.getSource())))
+                        .then(Commands.literal("info")
+                                .requires(HeldenPermission.EVENT_INFO::granted)
+                                .executes(context -> eventInfo(context.getSource())))
+                        .then(Commands.argument("typ", StringArgumentType.word())
+                                .requires(HeldenPermission.EVENT_RUN::granted)
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                                        Arrays.stream(EventType.values()).map(EventType::getId),
+                                        builder))
+                                .then(Commands.argument("dauer", StringArgumentType.word())
+                                        .executes(context -> eventStart(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "typ"),
+                                                StringArgumentType.getString(context, "dauer"))))))
                 .then(Commands.literal("wall")
                         .requires(HeldenPermission.WALL::granted)
                         .then(Commands.literal("drop")
@@ -696,6 +719,77 @@ public final class HeldenCommand {
     /** Die gueltigen Kennungen, fuer die Fehlermeldung. */
     private static String phaseIds() {
         return Arrays.stream(Phase.values()).map(Phase::getId).collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Startet ein Event.
+     *
+     * <p>Drei Fehler, drei Meldungen: unbekannte Kennung, unlesbare Dauer, falsche Phase.
+     * Eine pauschale "geht nicht"-Zeile liesse den Op raten.
+     */
+    private static int eventStart(CommandSourceStack source, String typeId, String duration) {
+        EventType type = EventType.byId(typeId);
+        if (type == null) {
+            source.sendFailure(HeldenText.eventUnknown(eventIds()));
+            return 0;
+        }
+
+        long millis = DurationText.parseMillis(duration);
+        if (millis == DurationText.INVALID) {
+            source.sendFailure(HeldenText.durationInvalid());
+            return 0;
+        }
+
+        if (!EventManager.start(source.getServer(), type, millis)) {
+            source.sendFailure(HeldenText.eventDenyPhase(
+                    type.getDisplayName(), type.allowedPhase().getDisplayName()));
+            return 0;
+        }
+
+        // Die Ansage macht der Manager als Broadcast — fuer einen Spieler waere eine
+        // zweite Zeile eine Dopplung. Die Konsole und ein Befehlsblock stehen aber nicht
+        // in der Spielerliste und saehen sonst gar nichts.
+        if (source.getPlayer() == null) {
+            String shown = DurationText.clock(millis);
+            source.sendSuccess(() -> HeldenText.eventStarted(type.getDisplayName(), shown), false);
+        }
+
+        return 1;
+    }
+
+    private static int eventStop(CommandSourceStack source) {
+        EventType running = EventManager.active(source.getServer());
+        if (running == null) {
+            source.sendFailure(HeldenText.eventNone());
+            return 0;
+        }
+
+        EventManager.stop(source.getServer(), HeldenText.eventStopped(running.getDisplayName()));
+
+        if (source.getPlayer() == null) {
+            source.sendSuccess(() -> HeldenText.eventStopped(running.getDisplayName()), false);
+        }
+
+        return 1;
+    }
+
+    private static int eventInfo(CommandSourceStack source) {
+        EventType running = EventManager.active(source.getServer());
+        if (running == null) {
+            source.sendSuccess(HeldenText::eventNone, false);
+            return 0;
+        }
+
+        String left = DurationText.clock(EventManager.remainingMillis(source.getServer()));
+        source.sendSuccess(() -> HeldenText.eventInfoRunning(running.getDisplayName(), left), false);
+        return 1;
+    }
+
+    /** Die gueltigen Kennungen, fuer die Fehlermeldung. */
+    private static String eventIds() {
+        return Arrays.stream(EventType.values())
+                .map(EventType::getId)
+                .collect(Collectors.joining(", "));
     }
 
     private static int phaseNext(CommandSourceStack source) {

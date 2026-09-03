@@ -54,6 +54,11 @@ public enum HeldenPermission {
     PHASE_NEXT("phase.next"),
     PHASE_SET("phase.set"),
 
+    // Zwei Namen ohne eigenes Literal, wie `center.show`/`center.set`: `info` liest,
+    // `run` startet und beendet. Starten und Beenden sind dieselbe Macht, also ein Node.
+    EVENT_INFO("event.info"),
+    EVENT_RUN("event.run"),
+
     WALL("wall"),
     FINALWAR("finalwar"),
     BORDER("border"),

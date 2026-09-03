@@ -27,6 +27,7 @@ grave screen and the renderers for the wall and the safe zone are client code.
   - [The dividing wall](#the-dividing-wall)
   - [The safe zone](#the-safe-zone)
   - [Daily playtime](#daily-playtime)
+  - [Events](#events)
   - [Starting spawn](#starting-spawn)
   - [The world border and the Final War](#the-world-border-and-the-final-war)
   - [The arena centre](#the-arena-centre)
@@ -37,6 +38,7 @@ grave screen and the renderers for the wall and the safe zone are client code.
   - [Duels](#duels-1)
   - [Bounty commands](#bounty-commands)
   - [Phase control](#phase-control)
+  - [Events](#events-1)
   - [Wall](#wall)
   - [Final War and border](#final-war-and-border)
   - [Arena centre](#arena-centre)
@@ -299,6 +301,50 @@ Operators are exempt. Since Minecraft hands the world owner permission level 4 w
 are on, `/helden debug playtime` exists to switch that exemption off for yourself so the
 system can be tested at all.
 
+### Events
+
+| | |
+|---|---|
+| Command | `/helden event <type> <duration>` |
+| Types so far | `notimelimit` |
+| Shown as | a green boss bar, counting down |
+| Warning | 1 minute before the end |
+| Audible countdown | last 10 seconds |
+
+An event is a named time window: a type, a duration, a boss bar, an announcement at the start
+and at the end. The command branch is the frame — future event types are meant to slot into
+it without changing it.
+
+`notimelimit` suspends the daily playtime limit for as long as it runs, and it does that by
+stopping the clock rather than by granting extra time: someone who has used twenty minutes
+still has forty left once it ends. Anyone whose hour is already used up gets back in while the
+event runs, too — without that an evening event would be worthless for half the server.
+
+**The clock in the corner stays up while it runs**, greyed out and standing still, with a
+pause symbol where the clock face usually is. Hiding it would look like the counter had
+broken, and leaving it running would be a lie — what a player wants to see during an event is
+exactly the hour they are not spending.
+
+Each type carries the phase it is allowed in — `notimelimit` names the build-up phase, since that
+is the only phase the limit applies to in the first place. A phase change ends a running
+event: its effect is gone in the new phase, and a boss bar counting down for nothing left
+would just be noise.
+
+It survives a server restart, reckoned on the wall clock — an event due to end at 21:00 still
+ends at 21:00 even if the server was down for two minutes in between. One whose end passed
+while the server was down is cleared silently rather than announced after the fact.
+
+The last minute is announced and the last ten seconds tick audibly, because the moment the
+event ends the limit applies again immediately, and whoever is out of time is kicked — with
+the same grace of up to three minutes as ever if they are mid-fight. That grace does not carry
+across the event: a partial overrun does not survive it, it starts fresh once the limit is
+back.
+
+A second `event` command replaces a running one, with a chat line saying so, rather than being
+refused — the same reason a mistyped phase countdown can be replaced: `1h` typed instead of
+`1m` must not be irreversible. `/helden reset all` also ends a running event, silently, like
+every other reset.
+
 ### Starting spawn
 
 Random position, balanced sides.
@@ -465,6 +511,14 @@ Heart changes are broadcast. `/helden info` is private to the caller.
 
 A running countdown is replaced rather than queued, so a mistyped command is not irreversible.
 
+### Events
+
+| Command | Effect |
+|---|---|
+| `/helden event <type> <duration>` | Starts an event. Only `notimelimit` so far, buildup phase only. Replaces a running one |
+| `/helden event stop` | Ends the running event early |
+| `/helden event info` | Which event is running and how long it has left |
+
 ### Wall
 
 | Command | Effect |
@@ -554,10 +608,10 @@ the caller and report only to them.
 
 ### Duration format
 
-`finalwar start` and `border shrink` take durations like `2h30m`, `150m`, `2h` or `90s`. Each
-part is optional but at least one has to be there. **A bare number is rejected, not guessed** —
-`3` could mean three hours or three minutes, and the difference is a whole evening. Maximum 12
-hours.
+`finalwar start`, `border shrink` and `/helden event` take durations like `2h30m`, `150m`,
+`2h` or `90s`. Each part is optional but at least one has to be there. **A bare number is
+rejected, not guessed** — `3` could mean three hours or three minutes, and the difference is a
+whole evening. Maximum 12 hours.
 
 ### Permissions
 
@@ -582,6 +636,8 @@ same power the name stops at the branch — `mchelden.command.heart` covers `giv
 | `mchelden.command.phase.info` | `phase info` |
 | `mchelden.command.phase.next` | `phase next` |
 | `mchelden.command.phase.set` | `phase set <phase>` |
+| `mchelden.command.event.info` | `event info` |
+| `mchelden.command.event.run` | `event <type> <duration>` and `event stop` |
 | `mchelden.command.wall` | `wall drop` / `raise` |
 | `mchelden.command.finalwar` | `finalwar start` / `stop` |
 | `mchelden.command.border` | `border shrink` / `reset` |
@@ -599,7 +655,8 @@ same power the name stops at the branch — `mchelden.command.heart` covers `giv
 Two names are not literal paths: `center.show` is the argumentless form, `center.set` is the
 three writing forms together. They sit side by side so that `mchelden.command.center.*` catches
 both. `phase.next` and `phase.set` are deliberately separate, because `set` can also jump
-backwards.
+backwards. `event.info` and `event.run` are further cases: `run` has no literal of its own
+either, because starting and stopping are the same power and share one node.
 
 **Without a permission plugin nothing changes.** Each node falls back to permission level 2,
 the threshold that used to apply to the whole tree.
@@ -635,8 +692,8 @@ gradlew test
 
 Tests are plain JUnit 5 over the parts that can be checked without starting the game: the
 grave split, bounty pairing, the border and storm math, the safe zone geometry, the combat
-timer's hit series, the elimination announcement's fit, duration parsing, the playtime tracker
-and the persisted state. The loot and spawn tests read Mojang's own data files out of the
+timer's hit series, the elimination announcement's fit, duration parsing, the playtime tracker,
+the event ids and their remaining-time arithmetic, and the persisted state. The loot and spawn tests read Mojang's own data files out of the
 NeoForge artifact and compare against them, so a vanilla change to a weight or a mob list
 shows up as a failing test rather than as a surprise in-game. Rules that touch every death in the
 project and are partly random are not something trying it out in-game can prove.
@@ -654,8 +711,10 @@ The mod uses official Mojang mappings; their license is at
 | `client` | HUDs, renderers, grave screen |
 | `combat` | Combat timer, container lock, item quota, death definition |
 | `command` | `/helden` and its `reset` subtree |
+| `event` | Event types, their lifecycle and boss bar |
 | `grave` | Block, block entity, estate split, registry |
 | `hearts` | Heart count, elimination |
+| `loot` | The drowned's trident drop chance |
 | `mixin` | Death messages, entity collision |
 | `network` | Payloads and sync |
 | `phase` | Phase transitions and their side effects |

@@ -13,6 +13,7 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 
 import net.bananemdnsa.mchelden.bounty.BountyManager;
+import net.bananemdnsa.mchelden.event.EventManager;
 import net.bananemdnsa.mchelden.grave.GraveBlockEntity;
 import net.bananemdnsa.mchelden.grave.GraveRegistry;
 import net.bananemdnsa.mchelden.hearts.Elimination;
@@ -123,6 +124,16 @@ public final class ResetCommand {
         registry.clear();
 
         PlayerStateStore.get(server).clear();
+
+        // Ausdruecklich, weil der Phasenwechsel darunter es nicht erledigt: der beendet ein
+        // Event nur, wenn dessen erlaubte Phase nicht die neue ist — und "notimelimit" gilt
+        // genau im Aufbau, dem Ziel von "reset all". Ohne diese Zeile ueberlebte ein
+        // laufendes Event den Werkszustand und liefe danach seelenruhig weiter.
+        //
+        // Still, ohne Ansage: ein Reset ist eine Korrektur, kein Ereignis. Und er steht vor
+        // dem Phasenwechsel, damit ein spaeterer Eventtyp mit anderer erlaubter Phase nicht
+        // doch noch "Event beendet" in den Chat schreibt.
+        EventManager.stop(server, null);
 
         PhaseManager.cancel(server);
         PhaseManager.apply(server, Phase.AUFBAU, false);

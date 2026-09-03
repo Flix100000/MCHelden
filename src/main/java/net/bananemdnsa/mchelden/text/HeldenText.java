@@ -1,6 +1,7 @@
 package net.bananemdnsa.mchelden.text;
 
 import net.minecraft.ChatFormatting;
+import net.bananemdnsa.mchelden.event.EventType;
 import net.bananemdnsa.mchelden.state.Phase;
 import net.bananemdnsa.mchelden.state.PlayerState;
 
@@ -537,5 +538,92 @@ public final class HeldenText {
     public static Component duelCommandNone(String player) {
         return Component.translatable("mchelden.command.duel.none", player)
                 .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Die Bossbar: Eventname und Restzeit als Uhr. */
+    public static Component eventBar(Component name, long remainingMillis) {
+        return Component.translatable("mchelden.event.bar", name,
+                DurationText.clock(remainingMillis));
+    }
+
+    /** Der Titel beim Start ist der Eventname selbst — wie bei den Phasen. */
+    public static Component eventTitle(Component name) {
+        return name.copy().withStyle(ChatFormatting.GREEN);
+    }
+
+    /**
+     * Was dieses Event konkret aendert. Eine Zeile je Typ.
+     *
+     * <p>Steht hier und nicht am Enum, genau wie {@link #phaseSubtitle}: der Typ liefert
+     * unformatierte Bausteine, das Einfaerben passiert an einer Stelle.
+     */
+    public static Component eventSubtitle(EventType type) {
+        return Component.translatable("mchelden.event.subtitle." + type.getId())
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /**
+     * Was mit dem Ende dieses Events wieder gilt.
+     *
+     * <p>Die Gegenrichtung zu {@link #eventSubtitle}, und nicht nur Zierde: wer sein
+     * Kontingent waehrend des Events aufgebraucht hat, erfaehrt sonst erst durch den Kick,
+     * dass die Uhr wieder laeuft.
+     */
+    public static Component eventEndSubtitle(EventType type) {
+        return Component.translatable("mchelden.event.subtitle." + type.getId() + ".end")
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component eventStarted(Component name, String duration) {
+        return Component.translatable("mchelden.event.start.broadcast", name, duration)
+                .withStyle(ChatFormatting.GREEN);
+    }
+
+    public static Component eventReplaced() {
+        return Component.translatable("mchelden.event.replaced").withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component eventWarning(Component name, int seconds) {
+        return Component.translatable("mchelden.event.warning", name, seconds)
+                .withStyle(ChatFormatting.YELLOW);
+    }
+
+    public static Component eventEndTitle() {
+        return Component.translatable("mchelden.event.end.title").withStyle(ChatFormatting.GOLD);
+    }
+
+    public static Component eventEnded(Component name) {
+        return Component.translatable("mchelden.event.end.broadcast", name)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component eventStopped(Component name) {
+        return Component.translatable("mchelden.event.end.stopped", name)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component eventEndedByPhase(Component name) {
+        return Component.translatable("mchelden.event.end.phase", name)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component eventInfoRunning(Component name, String remaining) {
+        return Component.translatable("mchelden.event.info.running", name, remaining)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Dieselbe Zeile fuer "info ohne Event" und "stop ohne Event" — es ist derselbe Satz. */
+    public static Component eventNone() {
+        return Component.translatable("mchelden.event.none").withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component eventDenyPhase(Component name, Component phase) {
+        return Component.translatable("mchelden.event.deny.phase", name, phase)
+                .withStyle(ChatFormatting.RED);
+    }
+
+    public static Component eventUnknown(String ids) {
+        return Component.translatable("mchelden.event.deny.unknown", ids)
+                .withStyle(ChatFormatting.RED);
     }
 }

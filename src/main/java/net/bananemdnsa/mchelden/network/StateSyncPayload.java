@@ -15,7 +15,7 @@ import net.minecraft.resources.ResourceLocation;
 public record StateSyncPayload(
         int hearts,
         BountyView bounty,
-        int playtimeRemainingSeconds,
+        PlaytimeView playtime,
         String phaseId,
         boolean wallUp,
         ArenaView arena) implements CustomPacketPayload {
@@ -26,7 +26,7 @@ public record StateSyncPayload(
     public static final StreamCodec<RegistryFriendlyByteBuf, StateSyncPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, StateSyncPayload::hearts,
             BountyView.STREAM_CODEC, StateSyncPayload::bounty,
-            ByteBufCodecs.VAR_INT, StateSyncPayload::playtimeRemainingSeconds,
+            PlaytimeView.STREAM_CODEC, StateSyncPayload::playtime,
             ByteBufCodecs.STRING_UTF8, StateSyncPayload::phaseId,
             ByteBufCodecs.BOOL, StateSyncPayload::wallUp,
             ArenaView.STREAM_CODEC, StateSyncPayload::arena,

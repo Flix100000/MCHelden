@@ -173,4 +173,59 @@ class GameStateTest {
         assertEquals(1500.0, state.getCenterX(), 1.0e-9);
         assertEquals(-800.0, state.getCenterZ(), 1.0e-9);
     }
+
+    /**
+     * Ein Ein-Stunden-Event, das ein Serverneustart auffrisst, waere der aergerlichste
+     * denkbare Fehler — und die Bossbar baut sich nach dem Neustart genau hieraus wieder
+     * auf.
+     */
+    @Test
+    void dasLaufendeEventUeberlebtDieSpeicherrunde() {
+        GameState state = new GameState();
+        state.setEvent("notimelimit", 1_000L, 61_000L);
+
+        CompoundTag tag = state.save(new CompoundTag(), null);
+        GameState geladen = GameState.load(tag, null);
+
+        assertEquals("notimelimit", geladen.getEventId());
+        assertEquals(1_000L, geladen.getEventStartedAt());
+        assertEquals(61_000L, geladen.getEventEndsAt());
+    }
+
+    /** Eine Welt von vor dieser Aenderung hat keinen Eintrag und darf kein Event haben. */
+    @Test
+    void alteWeltOhneEintragHatKeinEvent() {
+        assertEquals("", GameState.load(new CompoundTag(), null).getEventId());
+    }
+
+    @Test
+    void frischerZustandHatKeinEvent() {
+        assertEquals("", new GameState().getEventId());
+    }
+
+    /** Ein beendetes Event darf keine Spuren hinterlassen, sonst zeigt die Bossbar es weiter an. */
+    @Test
+    void clearEventLoeschtDasEvent() {
+        GameState state = new GameState();
+        state.setEvent("notimelimit", 1_000L, 61_000L);
+        state.clearEvent();
+
+        assertEquals("", state.getEventId());
+        assertEquals(0L, state.getEventStartedAt());
+        assertEquals(0L, state.getEventEndsAt());
+    }
+
+    /**
+     * Ein laufendes Event ist Zustand einer Runde, nicht Weltaufbau — anders als die
+     * Arenamitte, die {@code reset} deshalb stehen laesst. Wer eine neue Runde startet, soll
+     * kein Event aus der vorigen mitschleppen.
+     */
+    @Test
+    void resetBeendetEinLaufendesEvent() {
+        GameState state = new GameState();
+        state.setEvent("notimelimit", 1_000L, 61_000L);
+        state.reset();
+
+        assertEquals("", state.getEventId());
+    }
 }

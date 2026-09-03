@@ -2,6 +2,7 @@ package net.bananemdnsa.mchelden.phase;
 
 import javax.annotation.Nullable;
 
+import net.bananemdnsa.mchelden.event.EventManager;
 import net.bananemdnsa.mchelden.network.NetworkHandler;
 import net.bananemdnsa.mchelden.network.SafeZoneShatterPayload;
 import net.bananemdnsa.mchelden.state.GameState;
@@ -212,6 +213,10 @@ public final class PhaseManager {
     public static void apply(MinecraftServer server, Phase target, boolean staged) {
         Phase previous = GameState.get(server).getPhase();
         GameState.get(server).setPhase(target);
+
+        // Ein Event, das in der neuen Phase nichts mehr bewirkt, endet mit ihr: eine
+        // Bossbar, die fuer nichts herunterzaehlt, ist Rauschen.
+        EventManager.endIfPhaseLeft(server, target);
 
         // Die Trennwand haengt an der Phase, ist aber ein eigener Schalter: `wall drop` und
         // `wall raise` sollen auch unabhaengig greifen. Der Wechsel bedient ihn, besitzt
