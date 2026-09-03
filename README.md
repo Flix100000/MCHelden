@@ -627,8 +627,8 @@ same power the name stops at the branch — `mchelden.command.heart` covers `giv
 | `mchelden.command.heart` | `heart give` / `remove` / `set` |
 | `mchelden.command.revive` | `revive <player> [hearts]` |
 | `mchelden.command.combat` | `combat clear` |
-| `mchelden.command.duell` | the duel branch |
-| `mchelden.command.debug` | all nine `debug` branches (read-only) |
+| `mchelden.command.duell` | `duell clear` |
+| `mchelden.command.debug` | all ten `debug` branches (read-only) |
 | `mchelden.command.bounty.show` | `bounty show` |
 | `mchelden.command.bounty.roll` | `bounty roll` |
 | `mchelden.command.bounty.set` | `bounty set` |
