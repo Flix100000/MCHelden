@@ -69,6 +69,13 @@ public enum HeldenPermission {
     CENTER_SHOW("center.show"),
     CENTER_SET("center.set"),
 
+    // Lesen und Handeln getrennt, wie bei `bounty` und `time`. `info` zeigt den Inhalt
+    // eines fremden Grabes und ist damit eine andere Auskunft als eine Positionsliste.
+    GRAVE_LIST("grave.list"),
+    GRAVE_INFO("grave.info"),
+    GRAVE_TP("grave.tp"),
+    GRAVE_REMOVE("grave.remove"),
+
     TIME_CHECK("time.check"),
     TIME_ADD("time.add"),
     TIME_SET("time.set"),

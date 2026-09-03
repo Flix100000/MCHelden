@@ -2,6 +2,7 @@ package net.bananemdnsa.mchelden.client.screen;
 
 import net.bananemdnsa.mchelden.MCHelden;
 import net.bananemdnsa.mchelden.grave.GraveMenu;
+import net.bananemdnsa.mchelden.text.HeldenText;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -84,10 +85,7 @@ public class GraveScreen extends AbstractContainerScreen<GraveMenu> {
     private Component elapsedSince() {
         Minecraft minecraft = Minecraft.getInstance();
         long ticks = minecraft.level == null ? 0 : minecraft.level.getGameTime() - menu.getDiedAt();
-        int minutes = (int) Math.max(0, ticks / (20 * 60));
 
-        return minutes < 1
-                ? Component.translatable("mchelden.grave.just_now")
-                : Component.translatable("mchelden.grave.minutes_ago", minutes);
+        return HeldenText.graveAge(ticks);
     }
 }

@@ -9,6 +9,7 @@ import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import java.util.List;
 
 import net.bananemdnsa.mchelden.grave.GraveEvents;
+import net.bananemdnsa.mchelden.grave.GraveNotice;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
@@ -97,6 +98,10 @@ public final class CombatLogout {
         player.getFoodData().setFoodLevel(20);
         player.clearFire();
         teleportToRespawn(server, player);
+
+        // Erst nach dem Teleport, damit der Abstand zum Grab vom Respawnpunkt aus
+        // gemessen wird und nicht von der Stelle, an der der Spieler ausgeloggt ist.
+        GraveNotice.send(player);
         return true;
     }
 

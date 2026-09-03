@@ -1,5 +1,7 @@
 package net.bananemdnsa.mchelden.text;
 
+import javax.annotation.Nullable;
+
 import net.minecraft.ChatFormatting;
 import net.bananemdnsa.mchelden.event.EventType;
 import net.bananemdnsa.mchelden.state.Phase;
@@ -8,6 +10,7 @@ import net.bananemdnsa.mchelden.state.PlayerState;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 
 /**
  * Alle spielersichtbaren Texte an einer Stelle, als Übersetzungsschlüssel.
@@ -624,6 +627,210 @@ public final class HeldenText {
 
     public static Component eventUnknown(String ids) {
         return Component.translatable("mchelden.event.deny.unknown", ids)
+                .withStyle(ChatFormatting.RED);
+    }
+
+    // ------------------------------------------------------------------
+    // Graeber
+    // ------------------------------------------------------------------
+
+    /** Wie lange ein Tod her ist, in ganzen Minuten oder Stunden. */
+    public static Component graveAge(long ageInTicks) {
+        long minutes = Math.max(0, ageInTicks / (20 * 60));
+
+        if (minutes < 1) {
+            return Component.translatable("mchelden.grave.just_now");
+        }
+        if (minutes < 60) {
+            return Component.translatable("mchelden.grave.minutes_ago", minutes);
+        }
+        return Component.translatable("mchelden.grave.hours_ago", minutes / 60);
+    }
+
+    /**
+     * Fuer ein Grab aus einer Welt von vor dem Zeitstempel im Verzeichnis.
+     *
+     * <p>Lieber zugeben, dass der Zeitpunkt fehlt, als „gerade eben" behaupten und jemanden
+     * zu einem zwei Wochen alten Grab schicken.
+     */
+    public static Component graveAgeUnknown() {
+        return Component.translatable("mchelden.grave.age_unknown");
+    }
+
+    /**
+     * Die erste Zeile der Respawn-Nachricht: wo das Grab liegt.
+     *
+     * <p>Die Koordinaten kopieren sich auf Klick in die Zwischenablage — wer eine externe
+     * Karte benutzt, braucht sie dort und nicht im Chat.
+     */
+    public static Component graveRespawnWhere(String coordinates, int distance,
+                                              String directionKey) {
+        return Component.translatable("mchelden.grave.respawn.where",
+                        copyableCoordinates(coordinates),
+                        distance,
+                        Component.translatable(directionKey))
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Dieselbe Zeile, wenn Grab und Respawn in derselben Saeule liegen. */
+    public static Component graveRespawnWhereHere(String coordinates) {
+        return Component.translatable("mchelden.grave.respawn.where.here",
+                        copyableCoordinates(coordinates))
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    private static Component copyableCoordinates(String coordinates) {
+        return Component.literal(coordinates).withStyle(style -> style
+                .withColor(ChatFormatting.GOLD)
+                .withUnderlined(true)
+                .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, coordinates))
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                        Component.translatable("mchelden.grave.respawn.copy"))));
+    }
+
+    /**
+     * Was im Grab liegt.
+     *
+     * <p>Ohne den Reststrahl: beim gewoehnlichen Tod folgt der Respawn so schnell, dass
+     * dort ohnehin fast immer die vollen vier Minuten stehen wuerden. Eine Zahl, die
+     * immer dieselbe ist, sagt nichts. Wer sie wirklich braucht, fragt
+     * {@code /helden grave info}.
+     */
+    public static Component graveRespawnContents(int items, int xp) {
+        return indented(Component.translatable("mchelden.grave.respawn.contents",
+                items, xp), ChatFormatting.GRAY);
+    }
+
+    /** Der Grund, warum die beiden Zeilen darueber dringlich sind. */
+    public static Component graveRespawnHurry() {
+        return indented(Component.translatable("mchelden.grave.respawn.hurry"),
+                ChatFormatting.RED);
+    }
+
+    /**
+     * Eine eingerueckte Folgezeile.
+     *
+     * <p>Die Einrueckung steht hier und nicht in der Sprachdatei: sonst muesste ein
+     * Uebersetzer fuehrende Leerzeichen erhalten, ohne zu ahnen, dass sie tragen.
+     */
+    private static Component indented(Component line, ChatFormatting color) {
+        return Component.literal("  ").append(line).withStyle(color);
+    }
+
+    /** Wenn jemand schneller war, waehrend der Tote noch auf dem Todesbildschirm sass. */
+    public static Component graveRespawnGone() {
+        return Component.translatable("mchelden.grave.respawn.gone")
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component graveListEmpty() {
+        return Component.translatable("mchelden.command.grave.list.empty")
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component graveListHeader(String target, int count) {
+        return Component.translatable("mchelden.command.grave.list.header", target, count)
+                .withStyle(ChatFormatting.GOLD);
+    }
+
+    /** Die Kopfzeile der ungefilterten Liste. Ohne Namen, weil keiner gemeint ist. */
+    public static Component graveListHeaderAll(int count) {
+        return Component.translatable("mchelden.command.grave.list.header.all", count)
+                .withStyle(ChatFormatting.GOLD);
+    }
+
+    /**
+     * Eine Zeile der Liste: Teleport-Knopf, anklickbare Koordinaten, Besitzer, Alter.
+     *
+     * <p>Der Besitzer entfaellt, wenn die Liste schon nach einem Spieler gefiltert ist —
+     * ihn in jeder Zeile zu wiederholen sagt nichts Neues.
+     */
+    public static MutableComponent graveListLine(String coordinates, @Nullable String owner,
+                                                 Component age) {
+        MutableComponent line = Component.literal("  ")
+                .append(graveButton("mchelden.command.grave.list.jump",
+                        "/helden grave tp " + coordinates,
+                        "mchelden.command.grave.tooltip.tp"))
+                .append(Component.literal(" "))
+                .append(graveLink(coordinates, "/helden grave info " + coordinates,
+                        "mchelden.command.grave.tooltip.info"));
+
+        if (owner != null) {
+            line.append(bullet()).append(Component.literal(owner).withStyle(ChatFormatting.WHITE));
+        }
+
+        return line.append(bullet()).append(age.copy().withStyle(ChatFormatting.GRAY));
+    }
+
+    /** Wie viele Graeber die Liste nicht mehr gezeigt hat. */
+    public static Component graveListMore(int rest) {
+        return indented(Component.translatable("mchelden.command.grave.list.more", rest),
+                ChatFormatting.DARK_GRAY);
+    }
+
+    /** Der Trenner zwischen den Feldern einer Listenzeile. */
+    private static Component bullet() {
+        return Component.literal(" · ").withStyle(ChatFormatting.DARK_GRAY);
+    }
+
+    private static Component graveButton(String key, String command, String hoverKey) {
+        return Component.translatable(key).withStyle(style -> style
+                .withColor(ChatFormatting.AQUA)
+                .withBold(true)
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                        Component.translatable(hoverKey))));
+    }
+
+    private static Component graveLink(String label, String command, String hoverKey) {
+        return Component.literal(label).withStyle(style -> style
+                .withColor(ChatFormatting.WHITE)
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                        Component.translatable(hoverKey))));
+    }
+
+    public static Component graveInfoHeader(String owner, String coordinates) {
+        return Component.translatable("mchelden.command.grave.info.header", owner, coordinates)
+                .withStyle(ChatFormatting.GOLD);
+    }
+
+    /** Alter, XP und Reststrahl in einer Zeile. */
+    public static Component graveInfoDetails(Component age, int xp, String remaining) {
+        return indented(Component.translatable("mchelden.command.grave.info.details",
+                age, xp, remaining), ChatFormatting.GRAY);
+    }
+
+    /** Dieselbe Zeile, nachdem der Strahl ausgegangen ist. */
+    public static Component graveInfoDetailsFaded(Component age, int xp) {
+        return indented(Component.translatable("mchelden.command.grave.info.details.faded",
+                age, xp), ChatFormatting.GRAY);
+    }
+
+    public static Component graveInfoItem(int count, Component item) {
+        return indented(Component.translatable("mchelden.command.grave.info.item", count, item),
+                ChatFormatting.WHITE);
+    }
+
+    /** Wenn der Block schon weg ist, aber der Eintrag noch steht. */
+    public static Component graveInfoBlockGone() {
+        return indented(Component.translatable("mchelden.command.grave.info.block_gone"),
+                ChatFormatting.DARK_GRAY);
+    }
+
+    public static Component graveTeleported(String owner, String coordinates) {
+        return Component.translatable("mchelden.command.grave.tp.done", owner, coordinates)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    public static Component graveRemoved(String owner, String coordinates) {
+        return Component.translatable("mchelden.command.grave.remove.done", owner, coordinates)
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Fuer `info`, `tp` und `remove`, wenn an der Stelle kein Grab eingetragen ist. */
+    public static Component graveNone() {
+        return Component.translatable("mchelden.command.grave.none")
                 .withStyle(ChatFormatting.RED);
     }
 }

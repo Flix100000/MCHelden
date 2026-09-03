@@ -249,6 +249,7 @@ public final class HeldenCommand {
                                                 context.getSource(),
                                                 IntegerArgumentType.getInteger(context, "x"),
                                                 IntegerArgumentType.getInteger(context, "z"))))))
+                .then(GraveCommand.build())
                 .then(ResetCommand.build())
                 .then(Commands.literal("time")
                         .requires(HeldenPermission.branch("time"))

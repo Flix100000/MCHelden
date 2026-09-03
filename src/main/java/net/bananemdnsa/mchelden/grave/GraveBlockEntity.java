@@ -42,6 +42,15 @@ import net.minecraft.world.level.block.state.BlockState;
 public class GraveBlockEntity extends BaseContainerBlockEntity {
     public static final int SLOTS = 27;
 
+    /**
+     * Wie lange der Lichtstrahl ueber einem Grab sichtbar bleibt, in Ticks. Vier Minuten.
+     *
+     * <p>Stand fruher privat im Renderer. Der Server braucht die Zahl aber auch:
+     * {@code /helden grave info} sagt, wie lange der Strahl noch als Ziel taugt, und zwei
+     * Kopien derselben Frist waeren zwei Zahlen, die auseinanderlaufen koennen.
+     */
+    public static final int BEAM_LIFETIME_TICKS = 4 * 60 * 20;
+
     /** Wie oft der Todeszeitpunkt auf dem Namensschild nachgezogen wird. */
     private static final int NAMEPLATE_REFRESH_TICKS = 200;
 
@@ -170,6 +179,17 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
 
     public long getDiedAt() {
         return diedAt;
+    }
+
+    /**
+     * Wie lange der Lichtstrahl noch steht, in Ticks. Null, wenn er aus ist.
+     *
+     * <p>Die Spielzeit kommt von aussen: derselbe Wert liegt auf dem Server in
+     * {@code ServerLevel} und auf dem Client in {@code ClientLevel}, und die Rechnung
+     * soll auf beiden Seiten dieselbe sein.
+     */
+    public long beamRemainingTicks(long now) {
+        return Math.max(0L, BEAM_LIFETIME_TICKS - (now - diedAt));
     }
 
     /**

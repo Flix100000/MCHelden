@@ -4,6 +4,8 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
+import net.bananemdnsa.mchelden.text.HeldenText;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.DoubleTag;
@@ -86,15 +88,10 @@ public final class GraveNameplate {
 
     /** Name in der ersten Zeile, wie lange der Tod her ist in der zweiten. */
     private static Component text(String ownerName, long ageInTicks) {
-        int minutes = (int) Math.max(0, ageInTicks / (20 * 60));
-        Component since = minutes < 1
-                ? Component.translatable("mchelden.grave.just_now")
-                : Component.translatable("mchelden.grave.minutes_ago", minutes);
-
         return Component.translatable("mchelden.grave.owner", ownerName)
                 .copy()
                 .append(Component.literal("\n"))
-                .append(since);
+                .append(HeldenText.graveAge(ageInTicks));
     }
 
     /** Entfernt das Schild. Ohne das bliebe Text in der Luft stehen, wo kein Grab mehr ist. */

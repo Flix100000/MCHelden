@@ -33,8 +33,6 @@ import net.minecraft.world.phys.Vec3;
 public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
     /** Höhe in Blöcken, solange der Strahl auf voller Länge steht. */
     private static final int MAX_HEIGHT = 14;
-    /** Wie lange der Strahl insgesamt sichtbar bleibt, in Ticks. Vier Minuten. */
-    private static final int LIFETIME_TICKS = 4 * 60 * 20;
     /** Ab wann er zu schrumpfen beginnt. Davor steht er ruhig. */
     private static final float SHRINK_START = 0.35f;
 
@@ -96,11 +94,11 @@ public class GraveRenderer implements BlockEntityRenderer<GraveBlockEntity> {
     }
 
     private static float heightFor(long age) {
-        if (age < 0 || age >= LIFETIME_TICKS) {
+        if (age < 0 || age >= GraveBlockEntity.BEAM_LIFETIME_TICKS) {
             return 0f;
         }
 
-        float progress = age / (float) LIFETIME_TICKS;
+        float progress = age / (float) GraveBlockEntity.BEAM_LIFETIME_TICKS;
         if (progress <= SHRINK_START) {
             return MAX_HEIGHT;
         }

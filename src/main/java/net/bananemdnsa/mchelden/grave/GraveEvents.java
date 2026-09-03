@@ -100,10 +100,23 @@ public final class GraveEvents {
         }
     }
 
-    /** Gibt beim Respawn zurück, was der Spieler behalten durfte. */
+    /**
+     * Gibt beim Respawn zurück, was der Spieler behalten durfte, und sagt ihm, wo der
+     * Rest liegt.
+     */
     public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
-            GraveReturn.deliver(player);
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        GraveReturn.deliver(player);
+
+        // Dasselbe Event feuert auch bei der Rueckkehr aus dem End, und dabei ist niemand
+        // gestorben. Ohne diese Pruefung erzaehlte die Nachricht dort vom letzten Grab von
+        // vorgestern. Das End ist ueber History Stages ohnehin raus — die Zeile kostet
+        // nichts und haelt die Regel gerade: die Nachricht gehoert zum Tod.
+        if (!event.isEndConquered()) {
+            GraveNotice.send(player);
         }
     }
 
@@ -131,8 +144,10 @@ public final class GraveEvents {
         }
 
         // Ins Verzeichnis: in einem ungeladenen Chunk ist dieser Stein sonst nicht mehr
-        // auffindbar, und `reset graves` liefe daran vorbei.
-        GraveRegistry.get(level.getServer()).add(pos, player.getUUID());
+        // auffindbar, und `reset graves` liefe daran vorbei. Der Zeitstempel ist derselbe,
+        // den `fill` dem Grab selbst gegeben hat — beides derselbe Tick derselben Welt.
+        GraveRegistry.get(level.getServer())
+                .add(pos, player.getUUID(), level.getGameTime());
     }
 
     /**
