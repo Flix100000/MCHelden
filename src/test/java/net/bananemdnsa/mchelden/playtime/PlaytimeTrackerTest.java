@@ -88,4 +88,55 @@ class PlaytimeTrackerTest {
     void ueberzugFaelltNichtUnterNull() {
         assertEquals(0, PlaytimeTracker.remainingSeconds(PlayerState.DAILY_PLAYTIME_SECONDS + 180));
     }
+
+    /**
+     * Die Uhr des Kontingents ist die Wanduhr, nicht der Servertick.
+     *
+     * <p>Serverticks fallen unter Last hinter die echte Zeit zurueck und werden ab zwei
+     * Sekunden Verzug ganz verworfen. Wer daran zaehlt, verbraucht in einer Stunde
+     * Wanduhrzeit weniger als eine Stunde Kontingent — die Anzeige auf dem Client laeuft
+     * dagegen in echter Zeit und stand deswegen schon auf Null, waehrend der Server noch
+     * Minuten uebrig hatte und seine Vorwarnungen hinterherschickte.
+     */
+    @Test
+    void unterEinerSekundeWirdNichtsAbgerechnet() {
+        assertEquals(0, PlaytimeTracker.elapsedSeconds(1_000L, 1_500L));
+    }
+
+    @Test
+    void eineGanzeSekundeWirdAbgerechnet() {
+        assertEquals(1, PlaytimeTracker.elapsedSeconds(1_000L, 2_000L));
+    }
+
+    /** Ein Lag-Spike verschluckt keine Zeit: sieben Sekunden Wanduhr, sieben Sekunden Kontingent. */
+    @Test
+    void einLagSpikeWirdVollAbgerechnet() {
+        assertEquals(7, PlaytimeTracker.elapsedSeconds(1_000L, 8_300L));
+    }
+
+    /** Springt die Uhr zurueck, wird nichts abgerechnet statt Zeit verschenkt. */
+    @Test
+    void ruecklaeufigeUhrRechnetNichtsAb() {
+        assertEquals(0, PlaytimeTracker.elapsedSeconds(5_000L, 4_000L));
+    }
+
+    /**
+     * Der angebrochene Rest bleibt am Anker stehen. Ohne das verlore jede Abrechnung bis zu
+     * einer knappen Sekunde, und aus vielen kleinen Resten wuerde derselbe Verzug wie
+     * vorher — nur langsamer.
+     */
+    @Test
+    void unregelmaessigeAbrechnungVerbrauchtGenauDieWanduhrzeit() {
+        long anchor = 0L;
+        int charged = 0;
+
+        // Abrechnungen in unregelmaessigen Abstaenden, wie unter Last.
+        for (long now : new long[] {1_100L, 2_000L, 3_700L, 4_050L, 30_000L, 60_000L}) {
+            int seconds = PlaytimeTracker.elapsedSeconds(anchor, now);
+            charged += seconds;
+            anchor = PlaytimeTracker.advanceAnchor(anchor, seconds);
+        }
+
+        assertEquals(60, charged);
+    }
 }

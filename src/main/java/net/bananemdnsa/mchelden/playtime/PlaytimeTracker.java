@@ -32,6 +32,9 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
  * bringt das Limit zurueck —, und es kann keinen Zustand geben, in dem Phase und Limit
  * auseinanderliegen.
  *
+ * <p>Gemessen wird an der Wanduhr, nicht an Serverticks. Warum das ein Unterschied ist,
+ * steht an {@link #LAST_CHARGED}.
+ *
  * <p>Dieselbe Ueberlegung traegt das Event {@code notimelimit}: auch dort wird nichts
  * geschaltet, sondern gefragt. Nach dem Eventende gilt das Limit im naechsten Tick wieder,
  * ohne dass irgendwer es zurueckstellen muesste — und auch die Kampf-Kulanz weiter unten
@@ -59,6 +62,10 @@ public final class PlaytimeTracker {
      * nicht dauern, ohne dass neu zugeschlagen wird. Ohne diese Grenze waere der Aufschub
      * unbegrenzt — zwei Leute, die sich abwechselnd anticken, koennten jemanden beliebig
      * lange online halten, und genau das soll das Zeitlimit verhindern.
+     *
+     * <p>Gezaehlt in echten Sekunden, waehrend der Combat-Timer an Ticks haengt: unter Last
+     * kann der Kampf damit laenger laufen als der Aufschub reicht. Genau richtig — der
+     * Deckel ist eine Obergrenze und keine Zusage.
      */
     public static final int MAX_OVERRUN_SECONDS = HitTimer.MAX_TICKS / 20;
 
@@ -81,7 +88,30 @@ public final class PlaytimeTracker {
      */
     private static final Set<UUID> FORCED = ConcurrentHashMap.newKeySet();
 
-    /** Der Server tickt zwanzigmal pro Sekunde, gezaehlt wird aber in Sekunden. */
+    /**
+     * Wann fuer einen Spieler das letzte Mal abgerechnet wurde.
+     *
+     * <p><b>Warum nicht einfach Serverticks gezaehlt werden:</b> Serverticks sind kein
+     * Zeitmass. Unter Last kommen weniger als zwanzig pro Sekunde; einen kleinen Rueckstand
+     * holt der Server wieder auf, sobald er aber mehr als zwei Sekunden hinterherhaengt,
+     * verwirft er die faelligen Ticks — {@code Can't keep up!} im Log —, und die sind
+     * endgueltig weg. Ein Kontingent, das an Ticks haengt, verliert damit genau diese Zeit,
+     * waehrend die Anzeige oben rechts in echter Zeit zaehlt und einen Sync nur bei
+     * Aenderungen bekommt. Ueber eine Sitzung werden daraus Minuten: die Uhr im HUD stand
+     * auf Null, waehrend der Server noch Kontingent uebrig hatte und seine Vorwarnungen
+     * hinterherschickte.
+     *
+     * <p>Rein transient wie {@link #OVERRUN}: der Anker gilt fuer die laufende Sitzung, und
+     * wer nicht da ist, verbraucht keine Zeit.
+     */
+    private static final Map<UUID, Long> LAST_CHARGED = new ConcurrentHashMap<>();
+
+    /**
+     * Wie oft nachgerechnet wird: einmal pro Sekunde genuegt, nicht zwanzigmal.
+     *
+     * <p>Nur der Takt, nicht das Mass — <i>wie viel</i> abgerechnet wird, sagt die Uhr.
+     * Faellt der Takt unter Last aus, holt die naechste Abrechnung das Versaeumte nach.
+     */
     private static int tickCounter;
 
     private PlaytimeTracker() {
@@ -105,6 +135,38 @@ public final class PlaytimeTracker {
      */
     public static int remainingSeconds(int usedSeconds) {
         return Math.max(0, PlayerState.DAILY_PLAYTIME_SECONDS - usedSeconds);
+    }
+
+    /**
+     * Wie viele ganze Sekunden seit dem Anker verstrichen sind.
+     *
+     * <p>Nie negativ, obwohl die Uhr monoton laeuft: eine Rechnung, die Zeit verschenkt,
+     * soll auch dann nichts verschenken, wenn sie einmal falsch herum aufgerufen wird.
+     */
+    static int elapsedSeconds(long anchorMillis, long nowMillis) {
+        return (int) Math.max(0L, (nowMillis - anchorMillis) / 1000L);
+    }
+
+    /**
+     * Wohin der Anker wandert, wenn diese Sekunden abgerechnet sind.
+     *
+     * <p>Um die abgerechneten Sekunden weiter statt auf jetzt: der angebrochene Rest bleibt
+     * stehen. Sonst verlore jede Abrechnung bis zu einer knappen Sekunde, und aus den Resten
+     * wuerde derselbe Rueckstand, den das Zaehlen von Ticks schon hatte.
+     */
+    static long advanceAnchor(long anchorMillis, int chargedSeconds) {
+        return anchorMillis + chargedSeconds * 1000L;
+    }
+
+    /**
+     * Die Uhr, an der das Kontingent haengt.
+     *
+     * <p>Monoton statt {@code currentTimeMillis}: gemessen werden Abstaende innerhalb einer
+     * Sitzung, und eine nachgestellte Systemuhr — ein NTP-Sprung genuegt — darf weder eine
+     * Stunde verschenken noch den Anker in eine Zukunft setzen, die nie kommt.
+     */
+    private static long nowMillis() {
+        return System.nanoTime() / 1_000_000L;
     }
 
     /** Was die Anzeige zeigen soll, oder {@link #NO_LIMIT}. */
@@ -178,6 +240,7 @@ public final class PlaytimeTracker {
         }
 
         OVERRUN.remove(uuid);
+        LAST_CHARGED.remove(uuid);
         NetworkHandler.syncTo(player);
         return forced;
     }
@@ -186,6 +249,7 @@ public final class PlaytimeTracker {
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         FORCED.remove(event.getEntity().getUUID());
         OVERRUN.remove(event.getEntity().getUUID());
+        LAST_CHARGED.remove(event.getEntity().getUUID());
         net.bananemdnsa.mchelden.world.SafeZone.forget(event.getEntity().getUUID());
     }
 
@@ -223,19 +287,49 @@ public final class PlaytimeTracker {
             // floege jemand mit fast aufgebrauchter Kulanz eine Sekunde nach dem Eventende
             // wortlos aus dem Kampf — genau der Fall, den die Kulanz verhindern soll.
             OVERRUN.remove(player.getUUID());
+            // Der Anker faellt mit, sonst stuende die Pause bei der naechsten Abrechnung
+            // rueckwirkend als verbrauchte Zeit da.
+            LAST_CHARGED.remove(player.getUUID());
+            return;
+        }
+
+        int elapsed = charge(player);
+        if (elapsed <= 0) {
             return;
         }
 
         int before = remainingSeconds(state.getPlaytimeUsedSeconds());
-        state.setPlaytimeUsedSeconds(state.getPlaytimeUsedSeconds() + 1);
+        state.setPlaytimeUsedSeconds(state.getPlaytimeUsedSeconds() + elapsed);
         store.setDirty();
         int after = remainingSeconds(state.getPlaytimeUsedSeconds());
 
         warn(player, before, after);
 
         if (after <= 0) {
-            kickOrDefer(server, player);
+            kickOrDefer(server, player, elapsed);
         }
+    }
+
+    /**
+     * Nimmt die faelligen Sekunden von der Uhr und setzt den Anker weiter.
+     *
+     * <p>Die erste Abrechnung einer Sitzung rechnet nichts ab, sondern setzt nur den Anker:
+     * die Zeit vor dem Join gehoert niemandem.
+     *
+     * @return die abzurechnenden Sekunden, meist eine, nach einem Lag-Spike mehrere
+     */
+    private static int charge(ServerPlayer player) {
+        long now = nowMillis();
+        Long anchor = LAST_CHARGED.putIfAbsent(player.getUUID(), now);
+        if (anchor == null) {
+            return 0;
+        }
+
+        int elapsed = elapsedSeconds(anchor, now);
+        if (elapsed > 0) {
+            LAST_CHARGED.put(player.getUUID(), advanceAnchor(anchor, elapsed));
+        }
+        return elapsed;
     }
 
     /**
@@ -279,12 +373,13 @@ public final class PlaytimeTracker {
      * <p>Sofortiger Kick waere ein legaler Combat-Log. Maximal drei Minuten Ueberzug, und
      * man muss dafuer in einem echten Kampf stehen.
      */
-    private static void kickOrDefer(MinecraftServer server, ServerPlayer player) {
+    private static void kickOrDefer(MinecraftServer server, ServerPlayer player, int elapsed) {
         UUID uuid = player.getUUID();
 
         if (CombatTracker.isInCombat(uuid)) {
-            int overrun = OVERRUN.merge(uuid, 1, Integer::sum);
-            if (overrun == 1) {
+            int overrun = OVERRUN.merge(uuid, elapsed, Integer::sum);
+            // Genau die eben abgerechneten Sekunden: dann stand vorher nichts im Eintrag.
+            if (overrun == elapsed) {
                 player.sendSystemMessage(HeldenText.playtimeAfterCombat());
             }
 
