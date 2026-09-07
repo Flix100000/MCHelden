@@ -407,9 +407,9 @@ it has to be set before the world exists.
 
 ### Loot and spawns
 
-Five deliberate exceptions to "game systems only". Four of them are data files that modify
-vanilla tables instead of replacing them, so other mods and data packs keep working; the
-fifth changes a drop chance rather than the loot itself, and is explained below.
+Five deliberate exceptions to "game systems only". Most of them are data files that modify
+vanilla tables instead of replacing them, so other mods and data packs keep working; two reach
+into code instead, because what they change is not in a data file at all. Both say below why.
 
 **Ancient city trims in shipwrecks.** The two trims that only exist in the ancient city —
 `silence` and `ward` — also turn up in all three shipwreck chests, at exactly the chances they
@@ -446,10 +446,21 @@ drops are. Raising the drop chance keeps it the same drop, just more often — w
 bonus included. Drowned that pick a trident up off the ground are left alone; vanilla already
 makes those drop it every time.
 
-**Deserts spawn nothing but endermen.** Every hostile mob is removed from the desert biome,
-and the enderman is given the End's pack size of exactly four, so they arrive as often as they
-do there. Bats, rabbits and glow squid stay. Note that husks only ever spawned in deserts, so
-this takes them out of the game.
+**Deserts spawn nothing but endermen — day and night.** Every hostile mob is removed from the
+desert biome, and the enderman is given the End's pack size of exactly four, so they arrive as
+often as they do there. Bats, rabbits and glow squid stay. Note that husks only ever spawned in
+deserts, so this takes them out of the game.
+
+The daylight half is the second rule that is not a data file. In vanilla nothing hostile spawns
+under an open sky by day, and that is not a matter of odds: the overworld's
+`monster_spawn_light_level` caps at 7, the surface sits at 15 in daylight, and 15 is never
+below 7. With every other hostile gone that left the desert empty for half of every day, and
+emptier than vanilla's, which at least kept its husks. So the placement check skips the light
+test for endermen in the desert — **and only the light test**. Forcing that check to succeed
+waives all of it, so the block underfoot and Peaceful mode are re-checked by hand; what is left
+is vanilla's own monster rule with the darkness clause taken out. Weight, pack size and the mob
+cap are untouched, so nothing about the night changes. Spawners, spawn eggs and summons go
+their own way.
 
 ### Crafting
 
@@ -742,7 +753,7 @@ The mod uses official Mojang mappings; their license is at
 | `playtime` | Daily allowance |
 | `state` | Persisted game and player state |
 | `text` | All user-facing strings |
-| `world` | Wall, safe zone, border, arena centre, storm, spawn placement, boss bar |
+| `world` | Wall, safe zone, border, arena centre, storm, spawn placement, desert endermen, boss bar |
 
 `MCHeldenConfig` at the root holds the one server setting; everything else that can change
 lives in the world's saved state.

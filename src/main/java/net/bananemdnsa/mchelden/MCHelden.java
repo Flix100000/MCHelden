@@ -25,6 +25,7 @@ import net.bananemdnsa.mchelden.state.PlayerState;
 import net.bananemdnsa.mchelden.state.PlayerStateStore;
 import net.bananemdnsa.mchelden.world.ArenaCenter;
 import net.bananemdnsa.mchelden.world.BorderController;
+import net.bananemdnsa.mchelden.world.DesertEndermen;
 import net.bananemdnsa.mchelden.world.DividerWall;
 import net.bananemdnsa.mchelden.world.SafeZone;
 import net.bananemdnsa.mchelden.world.SpawnPlacer;
@@ -95,6 +96,7 @@ public class MCHelden {
         NeoForge.EVENT_BUS.addListener(SafeZone::onPlayerTick);
         NeoForge.EVENT_BUS.addListener(SafeZone::onSpawn);
         NeoForge.EVENT_BUS.addListener(DrownedTrident::onEntityJoin);
+        NeoForge.EVENT_BUS.addListener(DesertEndermen::onSpawnPlacement);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
