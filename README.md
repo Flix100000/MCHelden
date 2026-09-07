@@ -5,8 +5,8 @@ around a single scarce resource: hearts.
 
 **Minecraft 1.21.1 · NeoForge 21.1.248 · Java 21**
 
-The mod builds game systems, plus five deliberate loot and spawn rules. It does not touch world
-generation and does not block items. What data it does ship *modifies* vanilla tables rather
+The mod builds game systems, plus five deliberate loot and spawn rules and one recipe. It does
+not touch world generation and does not block items. What data it does ship *modifies* vanilla tables rather
 than replacing them, so it sits alongside History Stages' data pack instead of fighting it.
 
 It has to be installed on **both sides**. The rules live on the server, but the HUDs, the
@@ -32,6 +32,7 @@ grave screen and the renderers for the wall and the safe zone are client code.
   - [The world border and the Final War](#the-world-border-and-the-final-war)
   - [The arena centre](#the-arena-centre)
   - [Loot and spawns](#loot-and-spawns)
+  - [Crafting](#crafting)
 - [Command reference](#command-reference)
   - [Players and hearts](#players-and-hearts)
   - [Combat](#combat)
@@ -450,6 +451,26 @@ and the enderman is given the End's pack size of exactly four, so they arrive as
 do there. Bats, rabbits and glow squid stay. Note that husks only ever spawned in deserts, so
 this takes them out of the game.
 
+### Crafting
+
+One recipe, and it exists because of the one above it.
+
+**Soul sand from sand and quartz.** Vanilla has no recipe for soul sand: you fetch it from the
+Nether or you go without. Sand already gives up quartz here, so both halves are lying around on
+the surface. Four sand in a cross around one nether quartz — the corners stay empty — yields
+**four soul sand**. Red sand counts, and the two mix freely in the same craft, the way they do
+in vanilla's TNT.
+
+```
+     sand
+sand quartz sand   ->  4x soul sand
+     sand
+```
+
+The recipe ships with its own unlock advancement, the way vanilla's do. Without one a recipe
+can still be laid by hand, but it never appears in the recipe book — and nobody hand-lays a
+recipe they have never been told about. Holding nether quartz is what reveals it.
+
 ---
 
 ## Command reference
@@ -726,8 +747,9 @@ The mod uses official Mojang mappings; their license is at
 `MCHeldenConfig` at the root holds the one server setting; everything else that can change
 lives in the world's saved state.
 
-Data files under `src/main/resources/data` carry the loot and spawn rules: a global loot
-modifier for the shipwreck trims and two biome modifiers for the desert. NeoForge ships
+Data files under `src/main/resources/data` carry the loot and spawn rules, plus the soul sand
+recipe and its unlock advancement: a global loot modifier for the shipwreck trims and two biome
+modifiers for the desert. NeoForge ships
 `add_table` and `remove_spawns` ready-made; `spawn_pack_size` is the mod's own, because
 NeoForge can add and remove spawns but not *change* one, and combining the two does not work —
 adding runs in an earlier phase than removing, so a mob removed and re-added with a new pack
