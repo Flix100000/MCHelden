@@ -82,6 +82,9 @@ public class MCHelden {
         NeoForge.EVENT_BUS.addListener(QuotaEvents::onBlockPlace);
         NeoForge.EVENT_BUS.addListener(QuotaEvents::onRightClickBlock);
         NeoForge.EVENT_BUS.addListener(GraveEvents::onDeath);
+        // Zuletzt: was andere Mods beim Tod fallen lassen, soll erst eingesammelt werden,
+        // nachdem alle es hinzugefuegt haben.
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, GraveEvents::onDrops);
         NeoForge.EVENT_BUS.addListener(GraveEvents::onRespawn);
         NeoForge.EVENT_BUS.addListener(DividerWall::onEntityTick);
         NeoForge.EVENT_BUS.addListener(DividerWall::onBreak);

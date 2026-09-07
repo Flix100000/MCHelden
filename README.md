@@ -191,6 +191,16 @@ The estate is split 50/50 between what you keep and what stays behind:
 - **Non-stackable items** are distributed at random, half and half.
 - **XP:** the player keeps nothing and respawns at zero. Half goes into the grave, the rest is
   gone.
+- **Whatever other mods drop** — a backpack, a curio, anything that lives outside the vanilla
+  inventory — is split the same way. The grave does not need to know those mods: the death
+  handler empties the vanilla inventory first, so anything still in the drop list afterwards
+  can only have come from somewhere else, and it is taken from there.
+
+The grave holds **45 slots**, five rows. That is not a round number picked for looks: the
+grave's share can run to 39 stacks — two pieces of armor plus one entry for each of the 37
+occupied inventory slots. Anything that does not fit is dropped at the grave rather than
+discarded, and a test derives the ceiling from the inventory's own geometry, so a wider
+vanilla inventory would show up as a failing test rather than as items quietly going missing.
 
 The grave itself is a headstone with the owner's skin, a floating name plate showing the time
 of death, and a short beam of light while it is fresh. It is indestructible in survival and

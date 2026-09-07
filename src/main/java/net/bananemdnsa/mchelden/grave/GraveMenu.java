@@ -23,12 +23,12 @@ import net.minecraft.world.item.ItemStack;
  */
 public class GraveMenu extends AbstractContainerMenu {
     private static final int SLOTS_PER_ROW = 9;
-    private static final int GRAVE_ROWS = 3;
+    private static final int GRAVE_ROWS = 5;
 
     /** Erste Grabreihe, passend zur Kopfzeile in der Textur. */
     private static final int GRAVE_TOP = 43;
-    private static final int INVENTORY_TOP = 109;
-    private static final int HOTBAR_TOP = 167;
+    private static final int INVENTORY_TOP = 145;
+    private static final int HOTBAR_TOP = 203;
     private static final int LEFT = 8;
 
     private final Container container;

@@ -1,5 +1,6 @@
 package net.bananemdnsa.mchelden.grave;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,7 +41,16 @@ import net.minecraft.world.level.block.state.BlockState;
  * eine Markierung, ein leeres wäre nur Müll.
  */
 public class GraveBlockEntity extends BaseContainerBlockEntity {
-    public static final int SLOTS = 27;
+    /**
+     * Plaetze im Grab. Fuenf Reihen zu neun.
+     *
+     * <p>Die Zahl ist keine Geschmacksfrage, sondern eine Obergrenze: der Grabanteil kann
+     * bis zu 39 Stapel umfassen — zwei Ruestungsteile und je einen Eintrag pro belegtem
+     * der 37 Inventarplaetze, wenn dort lauter Stapel liegen. Mit den urspruenglichen 27
+     * fiel der Rest hinten ab, und weil {@link GraveSplitter} die unteilbaren Sachen als
+     * letzte anhaengt, waren das immer zuerst Werkzeuge und Eimer.
+     */
+    public static final int SLOTS = 45;
 
     /**
      * Wie lange der Lichtstrahl ueber einem Grab sichtbar bleibt, in Ticks. Vier Minuten.
@@ -81,19 +91,20 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
         super(MCHeldenBlockEntities.GRAVE.get(), pos, state);
     }
 
-    /** Füllt ein frisches Grab. Wird direkt nach dem Setzen des Blocks aufgerufen. */
-    public void fill(Player deceased, List<ItemStack> contents, int xp) {
+    /**
+     * Füllt ein frisches Grab. Wird direkt nach dem Setzen des Blocks aufgerufen.
+     *
+     * @return was keinen Platz mehr fand — vom Aufrufer fallen zu lassen, nicht zu verwerfen
+     */
+    public List<ItemStack> fill(Player deceased, List<ItemStack> contents, int xp) {
         this.owner = deceased.getUUID();
         this.ownerName = deceased.getGameProfile().getName();
         this.storedXp = xp;
         this.diedAt = deceased.level().getGameTime();
         this.headStack = null;
 
-        for (int slot = 0; slot < Math.min(contents.size(), SLOTS); slot++) {
-            items.set(slot, contents.get(slot));
-        }
+        List<ItemStack> overflow = insert(contents);
 
-        setChanged();
         if (level instanceof ServerLevel serverLevel) {
             nameplateId = GraveNameplate.spawn(serverLevel, worldPosition, ownerName);
 
@@ -103,6 +114,37 @@ public class GraveBlockEntity extends BaseContainerBlockEntity {
             play(serverLevel, SoundEvents.SOUL_ESCAPE.value(), 0.9f, 0.7f);
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_ALL);
         }
+
+        return overflow;
+    }
+
+    /**
+     * Legt hinein, was in die freien Plaetze passt.
+     *
+     * <p>Gibt zurueck statt zu verwerfen, was keinen Platz mehr findet. Ein Grab, das den
+     * Rest still loescht, ist genau der Fehler, den die fuenf Reihen oben abstellen — und
+     * eine Obergrenze, auf die man sich verlaesst, ohne den Ueberlauf zu behandeln, ist
+     * beim naechsten zusaetzlichen Slot wieder dieselbe Falle.
+     *
+     * @return die Stapel ohne Platz, in ihrer Reihenfolge
+     */
+    public List<ItemStack> insert(List<ItemStack> contents) {
+        List<ItemStack> overflow = new ArrayList<>();
+        int slot = 0;
+
+        for (ItemStack stack : contents) {
+            while (slot < SLOTS && !items.get(slot).isEmpty()) {
+                slot++;
+            }
+            if (slot >= SLOTS) {
+                overflow.add(stack);
+            } else {
+                items.set(slot++, stack);
+            }
+        }
+
+        setChanged();
+        return overflow;
     }
 
     /** Schliessgeraeusch, wenn jemand das Grab wieder zumacht. */

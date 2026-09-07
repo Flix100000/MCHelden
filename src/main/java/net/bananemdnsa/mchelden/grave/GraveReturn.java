@@ -22,9 +22,16 @@ public final class GraveReturn {
     private GraveReturn() {
     }
 
+    /**
+     * Merkt einen Anteil vor. Mehrfach aufrufbar: was schon vorliegt, bleibt liegen.
+     *
+     * <p>Angehaengt statt ersetzt, weil beim Tod zweimal geteilt wird — einmal ueber das
+     * Vanilla-Inventar beim Todesereignis, und einmal ueber das, was andere Mods
+     * anschliessend fallen lassen. Ein Ersetzen liesse den ersten Anteil verschwinden.
+     */
     public static void remember(UUID uuid, List<ItemStack> stacks) {
         if (!stacks.isEmpty()) {
-            PENDING.put(uuid, new ArrayList<>(stacks));
+            PENDING.computeIfAbsent(uuid, key -> new ArrayList<>()).addAll(stacks);
         }
     }
 

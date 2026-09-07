@@ -58,7 +58,13 @@ public final class CombatLogout {
             // Die behaltene Haelfte kommt direkt zurueck ins Inventar statt in eine
             // Zwischenablage: sie wird beim Ausloggen mitgespeichert und ueberlebt damit
             // auch einen Serverneustart.
-            keep.forEach(stack -> player.getInventory().add(stack));
+            keep.forEach(stack -> {
+                // Der Rueckgabewert zaehlt: das Inventar hat 36 Plaetze, der Anteil kann
+                // 37 Stapel umfassen. Ein verworfener Rest waere still verlorene Beute.
+                if (!player.getInventory().add(stack)) {
+                    player.drop(stack, false);
+                }
+            });
         }
 
         PlayerStateStore store = PlayerStateStore.get(server);

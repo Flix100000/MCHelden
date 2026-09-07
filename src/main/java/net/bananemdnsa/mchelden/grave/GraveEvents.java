@@ -2,6 +2,9 @@ package net.bananemdnsa.mchelden.grave;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.Nullable;
 
@@ -12,10 +15,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 /**
@@ -27,6 +33,19 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 public final class GraveEvents {
     /** Wie weit nach oben nach einem sicheren Platz gesucht wird. */
     private static final int SEARCH_UP = 24;
+
+    /**
+     * Wo das eben gesetzte Grab steht, und in welchem Tick.
+     *
+     * <p>Der Tick gehoert dazu: {@link #bury} laeuft auch beim Combat-Log, wo danach keine
+     * Drops kommen. Ohne den Vergleich haenge der Eintrag dort stehen, und ein spaeterer
+     * Tod ohne Grabplatz legte die Sachen anderer Mods in ein Grab von vorgestern.
+     */
+    private record FreshGrave(BlockPos pos, long gameTime) {
+    }
+
+    /** Rein transient: er wird im selben Tick gesetzt und wieder abgeholt. */
+    private static final Map<UUID, FreshGrave> FRESH = new ConcurrentHashMap<>();
 
     private GraveEvents() {
     }
@@ -127,6 +146,63 @@ public final class GraveEvents {
         }
     }
 
+    /**
+     * Nimmt auf, was andere Mods beim Tod fallen lassen wuerden.
+     *
+     * <p>Rucksaecke, Curios und alles Vergleichbare liegen nicht im Vanilla-Inventar und
+     * kommen deswegen bei {@link #carriedItems} nicht vor — sie fielen bisher neben dem
+     * Grab auf den Boden und despawnten dort, waehrend der Tote noch am Respawnen war.
+     *
+     * <p>Der Zugriff braucht keinen einzigen dieser Mods zu kennen. Das Todesereignis hat
+     * das Vanilla-Inventar bereits geleert, und dieses Ereignis feuert danach — was hier
+     * noch in der Liste steht, kann also nur von woanders kommen. Angemeldet auf der
+     * niedrigsten Stufe, damit alle, die etwas hinzufuegen, vorher dran waren.
+     */
+    public static void onDrops(LivingDropsEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+                || !(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        FreshGrave fresh = FRESH.remove(player.getUUID());
+        if (fresh == null || fresh.gameTime() != level.getGameTime()
+                || event.getDrops().isEmpty()
+                || !(level.getBlockEntity(fresh.pos()) instanceof GraveBlockEntity grave)) {
+            return;
+        }
+
+        List<ItemStack> stacks = new ArrayList<>();
+        for (ItemEntity dropped : event.getDrops()) {
+            if (!dropped.getItem().isEmpty()) {
+                stacks.add(dropped.getItem().copy());
+            }
+        }
+        if (stacks.isEmpty()) {
+            return;
+        }
+
+        // Dieselbe Regel wie fuer alles andere: geteilt wird, was jemand bei sich trug.
+        GraveSplitter.Split split = GraveSplitter.split(List.of(), stacks, level.random);
+        GraveReturn.remember(player.getUUID(), split.keep());
+        dropAtGrave(level, fresh.pos(), grave.insert(split.grave()));
+
+        // Uebernommen heisst uebernommen: sonst laege alles zusaetzlich am Boden.
+        event.setCanceled(true);
+    }
+
+    /**
+     * Wirft am Grab aus, was nicht mehr hineinpasst.
+     *
+     * <p>Sichtbar auf dem Boden statt still geloescht. Nach der Vergroesserung auf fuenf
+     * Reihen sollte das nicht mehr vorkommen — aber ein Grab, das seinen Ueberlauf
+     * verschweigt, war genau der Fehler davor.
+     */
+    private static void dropAtGrave(ServerLevel level, BlockPos pos, List<ItemStack> stacks) {
+        for (ItemStack stack : stacks) {
+            Block.popResource(level, pos, stack);
+        }
+    }
+
     private static void place(ServerLevel level, ServerPlayer player, List<ItemStack> contents, int xp) {
         BlockPos pos = findSafeSpot(level, player.blockPosition());
         if (pos == null) {
@@ -140,7 +216,8 @@ public final class GraveEvents {
         level.setBlockAndUpdate(pos, state);
 
         if (level.getBlockEntity(pos) instanceof GraveBlockEntity grave) {
-            grave.fill(player, contents, xp);
+            dropAtGrave(level, pos, grave.fill(player, contents, xp));
+            FRESH.put(player.getUUID(), new FreshGrave(pos, level.getGameTime()));
         }
 
         // Ins Verzeichnis: in einem ungeladenen Chunk ist dieser Stein sonst nicht mehr

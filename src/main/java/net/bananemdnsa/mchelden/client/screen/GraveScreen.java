@@ -41,9 +41,9 @@ public class GraveScreen extends AbstractContainerScreen<GraveMenu> {
     public GraveScreen(GraveMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         this.imageWidth = 176;
-        this.imageHeight = 190;
-        // Die Grabplaetze enden bei 97 — die Beschriftung muss darunter, nicht darauf.
-        this.inventoryLabelY = 100;
+        this.imageHeight = 226;
+        // Die Grabplaetze enden bei 133 — die Beschriftung muss darunter, nicht darauf.
+        this.inventoryLabelY = 136;
     }
 
     @Override
